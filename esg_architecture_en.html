@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ESG Canonical Model — Architecture</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #F0F2F5;
+    --canvas: #ffffff;
+    --grid: #E8EBF0;
+    --text-primary: #1A1D23;
+    --text-secondary: #6B7280;
+    --text-muted: #9CA3AF;
+    --border: #D1D5DB;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.06);
+    --shadow-lg: 0 8px 24px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.08);
+
+    --csrd:  #6366F1; --csrd-bg: #EEF2FF; --csrd-border: #C7D2FE;
+    --cdp:   #10B981; --cdp-bg:  #ECFDF5; --cdp-border:  #A7F3D0;
+    --gri:   #F59E0B; --gri-bg:  #FFFBEB; --gri-border:  #FDE68A;
+    --ifrs:  #3B82F6; --ifrs-bg: #EFF6FF; --ifrs-border: #BFDBFE;
+    --tcfd:  #8B5CF6; --tcfd-bg: #F5F3FF; --tcfd-border: #DDD6FE;
+    --future:#6B7280; --future-bg:#F9FAFB; --future-border:#E5E7EB;
+
+    --canon: #0EA5E9; --canon-bg: #F0F9FF; --canon-border: #BAE6FD;
+    --map:   #F97316; --map-bg:   #FFF7ED; --map-border:   #FED7AA;
+    --render:#A855F7; --render-bg:#FAF5FF; --render-border:#E9D5FF;
+    --data:  #14B8A6; --data-bg:  #F0FDFA; --data-border:  #99F6E4;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  .header {
+    background: var(--text-primary);
+    color: #fff;
+    padding: 18px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom: 1px solid #2D3748;
+  }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .header-logo { width: 28px; height: 28px; background: var(--canon); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+  .header-logo svg { width: 16px; height: 16px; fill: white; }
+  .header-title { font-size: 14px; font-weight: 600; }
+  .header-sub { font-size: 12px; color: #9CA3AF; margin-top: 1px; }
+  .header-badges { display: flex; gap: 8px; }
+  .header-badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 500; }
+  .badge-pm   { background: #1E40AF22; color: #93C5FD; border: 1px solid #1E40AF44; }
+  .badge-back { background: #06563022; color: #6EE7B7; border: 1px solid #06563044; }
+  .badge-front{ background: #7C3AED22; color: #C4B5FD; border: 1px solid #7C3AED44; }
+
+  .canvas { padding: 40px; min-width: 1200px; }
+
+  .diagram-area {
+    background: var(--canvas);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
+    padding: 48px 40px;
+    position: relative;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .fw-lane { display: flex; gap: 10px; margin-bottom: 8px; }
+  .fw-chip {
+    flex: 1; padding: 10px 14px; border-radius: 8px;
+    border: 1.5px solid; text-align: center; box-shadow: var(--shadow-sm);
+  }
+  .fw-chip .fw-name { font-size: 12px; font-weight: 700; }
+  .fw-chip .fw-code { font-size: 10px; font-family: 'JetBrains Mono', monospace; opacity: 0.7; margin-top: 2px; }
+  .fw-csrd-chip  { background: var(--csrd-bg);  border-color: var(--csrd-border);  color: var(--csrd);  }
+  .fw-cdp-chip   { background: var(--cdp-bg);   border-color: var(--cdp-border);   color: var(--cdp);   }
+  .fw-gri-chip   { background: var(--gri-bg);   border-color: var(--gri-border);   color: var(--gri);   }
+  .fw-ifrs-chip  { background: var(--ifrs-bg);  border-color: var(--ifrs-border);  color: var(--ifrs);  }
+  .fw-tcfd-chip  { background: var(--tcfd-bg);  border-color: var(--tcfd-border);  color: var(--tcfd);  }
+  .fw-future-chip{ background: var(--future-bg);border-color: var(--future-border);color: var(--future); border-style: dashed; }
+
+  .connector { display: flex; justify-content: center; margin: 14px 0; }
+  .conn-line { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .conn-line .line { width: 2px; height: 20px; }
+  .conn-line .arrow-head { width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid; }
+  .conn-line .conn-label { font-size: 10px; font-weight: 600; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 10px; margin: 2px 0; }
+
+  .conn-fanout { display: flex; align-items: flex-start; justify-content: space-around; width: 100%; height: 40px; position: relative; margin: 10px 0; }
+
+  .layer-box { border-radius: 10px; border: 1.5px solid; padding: 18px 24px; box-shadow: var(--shadow-md); margin-bottom: 0; }
+  .layer-box .layer-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+  .layer-box .layer-title .layer-icon { width: 22px; height: 22px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 11px; }
+  .layer-box .layer-desc { font-size: 11px; opacity: 0.75; margin-bottom: 14px; }
+  .layer-box .layer-fields { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  .field-pill { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 3px 8px; border-radius: 4px; border: 1px solid; font-weight: 500; }
+
+  .map-box { background: var(--map-bg); border-color: var(--map-border); color: #C2410C; }
+  .map-box .layer-icon { background: var(--map); color: white; }
+  .map-field { background: #FFF7ED; border-color: #FED7AA; color: #9A3412; }
+
+  .canon-box { background: var(--canon-bg); border-color: var(--canon-border); color: #0369A1; }
+  .canon-box .layer-icon { background: var(--canon); color: white; }
+
+  .canon-inner { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 14px; }
+  .canon-card { background: white; border: 1px solid var(--canon-border); border-radius: 8px; padding: 14px; box-shadow: var(--shadow-sm); }
+  .canon-card .cc-title { font-size: 11px; font-weight: 700; color: var(--canon); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--canon-border); display: flex; align-items: center; gap: 6px; }
+  .cc-badge { font-size: 9px; padding: 1px 5px; background: var(--canon-bg); border: 1px solid var(--canon-border); border-radius: 3px; font-weight: 600; }
+  .canon-field { display: flex; align-items: baseline; gap: 6px; padding: 3px 0; border-bottom: 1px solid #F0F9FF; font-size: 10.5px; }
+  .canon-field:last-child { border-bottom: none; }
+  .cf-name { font-family: 'JetBrains Mono', monospace; font-weight: 500; color: #0369A1; flex-shrink: 0; }
+  .cf-type { font-size: 9.5px; color: #9CA3AF; font-family: 'JetBrains Mono', monospace; }
+  .cf-pk { font-size: 8px; padding: 1px 4px; background: #FEF3C7; color: #92400E; border-radius: 2px; font-weight: 700; margin-right: 2px; }
+  .cf-fk { font-size: 8px; padding: 1px 4px; background: #EDE9FE; color: #5B21B6; border-radius: 2px; font-weight: 700; margin-right: 2px; }
+
+  .render-box { background: var(--render-bg); border-color: var(--render-border); color: #7E22CE; }
+  .render-box .layer-icon { background: var(--render); color: white; }
+  .render-field { background: var(--render-bg); border-color: var(--render-border); color: #6D28D9; }
+
+  .output-lane { display: flex; gap: 10px; }
+  .out-chip { flex: 1; border-radius: 8px; border: 1.5px solid; padding: 10px 12px; box-shadow: var(--shadow-sm); }
+  .out-chip .out-fw { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+  .out-chip .out-code { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; }
+  .out-chip .out-label { font-size: 10px; opacity: 0.7; margin-top: 2px; }
+
+  .example-panel { margin-top: 40px; background: var(--data-bg); border: 1.5px solid var(--data-border); border-radius: 10px; padding: 24px; box-shadow: var(--shadow-md); }
+  .example-panel .ep-title { font-size: 12px; font-weight: 700; color: #0F766E; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .ep-title .ep-icon { width: 20px; height: 20px; background: var(--data); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: white; }
+
+  .example-grid { display: grid; grid-template-columns: 200px 1fr 1fr 1fr 1fr 1fr; gap: 0; border: 1px solid var(--data-border); border-radius: 8px; overflow: hidden; background: white; }
+  .eg-header { background: #134E4A; color: white; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 8px 12px; }
+  .eg-cell { padding: 8px 12px; font-size: 11px; border-bottom: 1px solid #E6FFFA; border-right: 1px solid #E6FFFA; display: flex; flex-direction: column; gap: 2px; }
+  .eg-cell:last-child { border-right: none; }
+  .eg-row-label { font-weight: 600; font-size: 10px; color: #0F766E; padding: 8px 12px; border-bottom: 1px solid #E6FFFA; display: flex; align-items: center; gap: 6px; background: #F0FDFA; }
+  .eg-row-label .fw-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .eg-val-code { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 600; }
+  .eg-val-label { font-size: 10px; color: #6B7280; }
+  .eg-val-req { font-size: 10px; }
+  .req-yes  { color: #059669; font-weight: 600; }
+  .req-cond { color: #D97706; font-weight: 600; }
+
+  .canonical-id-display { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--canon); background: var(--canon-bg); border: 1.5px solid var(--canon-border); padding: 6px 14px; border-radius: 6px; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+
+  .legend { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-secondary); }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .leg-box  { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+  .leg-line { width: 24px; height: 2px; flex-shrink: 0; }
+  .leg-dash { width: 24px; height: 2px; background: repeating-linear-gradient(90deg, #9CA3AF 0, #9CA3AF 4px, transparent 4px, transparent 8px); flex-shrink: 0; }
+
+  .svg-connectors { width: 100%; height: 50px; overflow: visible; display: block; margin: 8px 0; }
+
+  .cardinality-row { display: flex; gap: 12px; margin: 16px 0; }
+  .card-note { flex: 1; background: white; border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; box-shadow: var(--shadow-sm); }
+  .card-note .cn-type  { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+  .card-note .cn-title { font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+  .card-note .cn-desc  { font-size: 11px; color: var(--text-secondary); line-height: 1.5; }
+  .cn-example { font-family: 'JetBrains Mono', monospace; font-size: 10px; background: var(--bg); padding: 4px 8px; border-radius: 4px; margin-top: 6px; color: var(--text-primary); }
+
+  .footer { text-align: center; font-size: 11px; color: var(--text-muted); margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo">
+      <svg viewBox="0 0 16 16"><path d="M8 1L1 5v6l7 4 7-4V5L8 1zm0 2.2L13 6.1v3.8L8 12.8 3 9.9V6.1L8 3.2z"/></svg>
+    </div>
+    <div>
+      <div class="header-title">ESG Canonical Model — Technical Architecture</div>
+      <div class="header-sub">Framework-agnostic data model · v1.0</div>
+    </div>
+  </div>
+  <div class="header-badges">
+    <span class="header-badge badge-pm">Product Manager</span>
+    <span class="header-badge badge-back">Backend Lead</span>
+    <span class="header-badge badge-front">Frontend Lead</span>
+  </div>
+</div>
+
+<div class="canvas">
+<div class="diagram-area">
+
+  <!-- ══ SECTION 1 : EXTERNAL FRAMEWORKS ══ -->
+  <div class="section-label">1 — External frameworks — Requirement sources</div>
+  <div class="fw-lane">
+    <div class="fw-chip fw-csrd-chip">
+      <div class="fw-name">CSRD</div>
+      <div class="fw-code">ESRS E1-6 · S1-4 · G1</div>
+    </div>
+    <div class="fw-chip fw-cdp-chip">
+      <div class="fw-name">CDP</div>
+      <div class="fw-code">C6.1 · W · F</div>
+    </div>
+    <div class="fw-chip fw-gri-chip">
+      <div class="fw-name">GRI</div>
+      <div class="fw-code">305-1 · 303 · 401</div>
+    </div>
+    <div class="fw-chip fw-ifrs-chip">
+      <div class="fw-name">IFRS S1/S2</div>
+      <div class="fw-code">S2.29(a) · S1.13</div>
+    </div>
+    <div class="fw-chip fw-tcfd-chip">
+      <div class="fw-name">TCFD</div>
+      <div class="fw-code">Metrics C · Strategy</div>
+    </div>
+    <div class="fw-chip fw-future-chip">
+      <div class="fw-name">Future FW</div>
+      <div class="fw-code">Plug-in via mapping</div>
+    </div>
+  </div>
+
+  <!-- Connector -->
+  <div class="connector">
+    <div class="conn-line">
+      <div class="line" style="background:#94A3B8;"></div>
+      <div class="conn-label" style="background:#F1F5F9;color:#64748B;border:1px solid #E2E8F0;">Proprietary codes → normalized</div>
+      <div class="line" style="background:#94A3B8;"></div>
+      <div class="arrow-head" style="border-top-color:var(--map);"></div>
+    </div>
+  </div>
+
+  <!-- ══ SECTION 2 : MAPPING TABLE ══ -->
+  <div class="section-label">2 — Mapping table (Framework Mapping)</div>
+  <div class="layer-box map-box">
+    <div class="layer-title">
+      <div class="layer-icon" style="background:var(--map);">⇄</div>
+      <span>framework_mapping</span>
+      <span style="font-size:10px;font-weight:400;opacity:0.6;margin-left:4px;">— Adding a framework = adding rows here, nothing else</span>
+    </div>
+    <div class="layer-desc">Central pivot table. Each row links a framework requirement to a canonical_id. A single canonical_id can have N rows — one per framework.</div>
+    <div class="layer-fields">
+      <span class="field-pill map-field">canonical_id FK</span>
+      <span class="field-pill map-field">framework VARCHAR</span>
+      <span class="field-pill map-field">requirement_code VARCHAR</span>
+      <span class="field-pill map-field">section VARCHAR</span>
+      <span class="field-pill map-field">question_label TEXT</span>
+      <span class="field-pill map-field">mandatory BOOLEAN</span>
+      <span class="field-pill map-field">cardinality ENUM(exact|partial|divergent)</span>
+      <span class="field-pill map-field">answer_format ENUM(number|text|boolean|select)</span>
+      <span class="field-pill map-field">unit VARCHAR</span>
+      <span class="field-pill map-field">confidence_level ENUM(high|medium|low)</span>
+      <span class="field-pill map-field">notes TEXT</span>
+      <span class="field-pill map-field">valid_from DATE</span>
+      <span class="field-pill map-field">valid_to DATE</span>
+    </div>
+  </div>
+
+  <!-- Connector -->
+  <div class="connector">
+    <div class="conn-line">
+      <div class="line" style="background:#94A3B8;"></div>
+      <div class="conn-label" style="background:#F0F9FF;color:#0369A1;border:1px solid #BAE6FD;">canonical_id (UUID)</div>
+      <div class="line" style="background:#94A3B8;"></div>
+      <div class="arrow-head" style="border-top-color:var(--canon);"></div>
+    </div>
+  </div>
+
+  <!-- ══ SECTION 3 : CANONICAL MODEL ══ -->
+  <div class="section-label">3 — Canonical model — The SaaS universal language</div>
+  <div class="layer-box canon-box">
+    <div class="layer-title">
+      <div class="layer-icon" style="background:var(--canon);">◎</div>
+      <span>Canonical Requirement Model</span>
+      <span style="font-size:10px;font-weight:400;opacity:0.6;margin-left:4px;">— Independent of any framework · Stable over time</span>
+    </div>
+    <div class="layer-desc">The immutable core of the system. These tables do not change when a new framework is added. canonical_ids are the single source of truth.</div>
+
+    <div class="canon-inner">
+
+      <!-- REQUIREMENT -->
+      <div class="canon-card">
+        <div class="cc-title">
+          <span>canonical_requirement</span>
+          <span class="cc-badge">TABLE</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-pk">PK</span>
+          <span class="cf-name">canonical_id</span>
+          <span class="cf-type">UUID</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-name">slug</span>
+          <span class="cf-type">VARCHAR — human-readable</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-name">domain</span>
+          <span class="cf-type">ENUM(E,S,G,X)</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-name">topic</span>
+          <span class="cf-type">VARCHAR</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-name">concept</span>
+          <span class="cf-type">VARCHAR</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-name">data_type</span>
+          <span class="cf-type">ENUM(number,text,bool,select)</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-name">unit</span>
+          <span class="cf-type">VARCHAR nullable</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-name">is_quantitative</span>
+          <span class="cf-type">BOOLEAN</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-name">label_fr</span>
+          <span class="cf-type">TEXT</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-name">label_en</span>
+          <span class="cf-type">TEXT</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-name">description</span>
+          <span class="cf-type">TEXT</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-fk">FK</span>
+          <span class="cf-name">taxonomy_id</span>
+          <span class="cf-type">UUID</span>
+        </div>
+      </div>
+
+      <!-- TAXONOMY -->
+      <div class="canon-card">
+        <div class="cc-title">
+          <span>canonical_taxonomy</span>
+          <span class="cc-badge">TABLE</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-pk">PK</span>
+          <span class="cf-name">taxonomy_id</span>
+          <span class="cf-type">UUID</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-name">domain</span>
+          <span class="cf-type">ENUM(E,S,G,X)</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-name">topic</span>
+          <span class="cf-type">VARCHAR</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-name">sub_topic</span>
+          <span class="cf-type">VARCHAR</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-name">concept_slug</span>
+          <span class="cf-type">VARCHAR — unique</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-fk">FK</span>
+          <span class="cf-name">parent_id</span>
+          <span class="cf-type">UUID nullable (self)</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-name">depth_level</span>
+          <span class="cf-type">INT</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-name">is_leaf</span>
+          <span class="cf-type">BOOLEAN</span>
+        </div>
+        <div style="margin-top:12px;padding:8px;background:#F0F9FF;border-radius:5px;font-size:10px;color:#0369A1;line-height:1.5;">
+          <strong>Example:</strong><br>
+          E → ghg_emissions<br>
+          → scope1 → direct_combustion<br>
+          S → workforce → own_employees<br>
+          G → ethics → anti_corruption
+        </div>
+      </div>
+
+      <!-- DATAPOINT -->
+      <div class="canon-card">
+        <div class="cc-title">
+          <span>canonical_datapoint</span>
+          <span class="cc-badge">TABLE</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-pk">PK</span>
+          <span class="cf-name">datapoint_id</span>
+          <span class="cf-type">UUID</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-fk">FK</span>
+          <span class="cf-name">canonical_id</span>
+          <span class="cf-type">UUID</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-fk">FK</span>
+          <span class="cf-name">org_id</span>
+          <span class="cf-type">UUID</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-name">reporting_year</span>
+          <span class="cf-type">INT</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-name">value_number</span>
+          <span class="cf-type">DECIMAL nullable</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-name">value_text</span>
+          <span class="cf-type">TEXT nullable</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-name">unit</span>
+          <span class="cf-type">VARCHAR</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-name">source</span>
+          <span class="cf-type">VARCHAR</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-name">confidence</span>
+          <span class="cf-type">ENUM(measured,estimated,proxy)</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-name">methodology</span>
+          <span class="cf-type">TEXT</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-name">audited</span>
+          <span class="cf-type">BOOLEAN</span>
+        </div>
+        <div class="canon-field">
+          <span class="cf-name">created_at</span>
+          <span class="cf-type">TIMESTAMP</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Connector -->
+  <div class="connector">
+    <div class="conn-line">
+      <div class="line" style="background:#94A3B8;"></div>
+      <div class="conn-label" style="background:var(--render-bg);color:#7E22CE;border:1px solid var(--render-border);">framework_mapping.canonical_id JOIN</div>
+      <div class="line" style="background:#94A3B8;"></div>
+      <div class="arrow-head" style="border-top-color:var(--render);"></div>
+    </div>
+  </div>
+
+  <!-- ══ SECTION 4 : RENDER LAYER ══ -->
+  <div class="section-label">4 — Render layer (Framework Renderer)</div>
+  <div class="layer-box render-box">
+    <div class="layer-title">
+      <div class="layer-icon" style="background:var(--render);">⊞</div>
+      <span>framework_renderer</span>
+      <span style="font-size:10px;font-weight:400;opacity:0.6;margin-left:4px;">— Transforms a canonical datapoint into a framework-specific response</span>
+    </div>
+    <div class="layer-desc">Service/function that joins canonical_datapoint + framework_mapping to produce the response in the format and nomenclature of each framework. Handles transformation logic, unit validation, and narrative response formatting.</div>
+    <div class="layer-fields">
+      <span class="field-pill render-field">input: canonical_id + org_id + year</span>
+      <span class="field-pill render-field">input: target_framework</span>
+      <span class="field-pill render-field">output: requirement_code</span>
+      <span class="field-pill render-field">output: section</span>
+      <span class="field-pill render-field">output: formatted_value</span>
+      <span class="field-pill render-field">output: validation_status</span>
+      <span class="field-pill render-field">output: completeness_score</span>
+    </div>
+  </div>
+
+  <!-- Connector -->
+  <div class="connector">
+    <div class="conn-line">
+      <div class="line" style="background:#94A3B8;"></div>
+      <div class="conn-label" style="background:#F9FAFB;color:#6B7280;border:1px solid #E5E7EB;">Export by framework</div>
+      <div class="line" style="background:#94A3B8;"></div>
+      <div class="arrow-head" style="border-top-color:#6B7280;"></div>
+    </div>
+  </div>
+
+  <!-- ══ SECTION 5 : OUTPUTS ══ -->
+  <div class="section-label">5 — Outputs — Reports generated per framework</div>
+  <div class="output-lane">
+    <div class="out-chip fw-csrd-chip">
+      <div class="out-fw" style="color:var(--csrd);">CSRD</div>
+      <div class="out-code" style="color:var(--csrd);">ESRS E1-6</div>
+      <div class="out-label">Gross Scope 1 GHG emissions</div>
+    </div>
+    <div class="out-chip fw-cdp-chip">
+      <div class="out-fw" style="color:var(--cdp);">CDP</div>
+      <div class="out-code" style="color:var(--cdp);">C6.1</div>
+      <div class="out-label">Gross global Scope 1 emissions</div>
+    </div>
+    <div class="out-chip fw-gri-chip">
+      <div class="out-fw" style="color:var(--gri);">GRI</div>
+      <div class="out-code" style="color:var(--gri);">GRI 305-1</div>
+      <div class="out-label">Direct (Scope 1) GHG emissions</div>
+    </div>
+    <div class="out-chip fw-ifrs-chip">
+      <div class="out-fw" style="color:var(--ifrs);">IFRS S2</div>
+      <div class="out-code" style="color:var(--ifrs);">S2.29(a)</div>
+      <div class="out-label">Scope 1 greenhouse gas emissions</div>
+    </div>
+    <div class="out-chip fw-tcfd-chip">
+      <div class="out-fw" style="color:var(--tcfd);">TCFD</div>
+      <div class="out-code" style="color:var(--tcfd);">Metrics C</div>
+      <div class="out-label">Scope 1 GHG emissions</div>
+    </div>
+    <div class="out-chip fw-future-chip">
+      <div class="out-fw" style="color:var(--future);">FUTURE</div>
+      <div class="out-code" style="color:var(--future);">???</div>
+      <div class="out-label">Ready with no refactoring</div>
+    </div>
+  </div>
+
+  <!-- ══ SECTION 6 : CARDINALITIES ══ -->
+  <div style="margin-top:36px;">
+    <div class="section-label">6 — Correspondence types (cardinality)</div>
+    <div class="cardinality-row">
+      <div class="card-note">
+        <div class="cn-type" style="color:#059669;">Exact — 1:1</div>
+        <div class="cn-title">Perfect match</div>
+        <div class="cn-desc">Same concept, same unit, same scope across all frameworks. One single field feeds everything.</div>
+        <div class="cn-example">GHG_SCOPE1_DIRECT_tCO2e<br>→ ESRS E1-6 · CDP C6.1 · GRI 305-1 · IFRS S2.29a</div>
+      </div>
+      <div class="card-note">
+        <div class="cn-type" style="color:#D97706;">Partial — 1:N</div>
+        <div class="cn-title">Same concept, different granularity</div>
+        <div class="cn-desc">Multiple values for the same canonical_id depending on the framework. E.g. Scope 2 in two calculation methods.</div>
+        <div class="cn-example">GHG_SCOPE2_tCO2e<br>→ value_market (CSRD, CDP)<br>→ value_location (CSRD, CDP, GRI)</div>
+      </div>
+      <div class="card-note">
+        <div class="cn-type" style="color:#DC2626;">Divergent — N:1</div>
+        <div class="cn-title">Similar concept, distinct definition</div>
+        <div class="cn-desc">Frameworks do not define exactly the same thing. The <code>notes</code> field documents the nuance and guides the user.</div>
+        <div class="cn-example">SUPPLY_CHAIN_SOCIAL_COVERAGE<br>→ ESRS S2 (due diligence)<br>→ GRI 413 (community impact)</div>
+      </div>
+      <div class="card-note">
+        <div class="cn-type" style="color:#7E22CE;">Absent — framework-only</div>
+        <div class="cn-title">Specific to a single framework</div>
+        <div class="cn-desc">Some requirements only exist in one framework. The canonical_id is created but without mapping to others.</div>
+        <div class="cn-example">TAX_COUNTRY_BY_COUNTRY<br>→ GRI 207 only<br>(no CSRD or CDP equivalent)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ EXAMPLE DATA ROW ══ -->
+  <div class="example-panel">
+    <div class="ep-title">
+      <div class="ep-icon">≡</div>
+      Sample data — mapping table for a single canonical_id
+    </div>
+
+    <div class="canonical-id-display">
+      <span style="opacity:0.5;font-weight:400;">canonical_id:</span>
+      GHG_SCOPE1_DIRECT_tCO2e
+    </div>
+
+    <div class="example-grid">
+      <div class="eg-header">Framework</div>
+      <div class="eg-header">requirement_code</div>
+      <div class="eg-header">section</div>
+      <div class="eg-header">question_label (official)</div>
+      <div class="eg-header">mandatory</div>
+      <div class="eg-header">cardinality</div>
+
+      <!-- CSRD -->
+      <div class="eg-row-label"><div class="fw-dot" style="background:var(--csrd);"></div>CSRD</div>
+      <div class="eg-cell"><span class="eg-val-code" style="color:var(--csrd);">ESRS E1-6</span><span class="eg-val-label">DR E1-6-a</span></div>
+      <div class="eg-cell"><span class="eg-val-label">Pollution and climate change · GHG emissions</span></div>
+      <div class="eg-cell"><span class="eg-val-label">Gross Scope 1 GHG emissions in metric tonnes of CO2 equivalent</span></div>
+      <div class="eg-cell"><span class="eg-val-req req-yes">✓ Mandatory</span></div>
+      <div class="eg-cell"><span class="eg-val-label">exact</span></div>
+
+      <!-- CDP -->
+      <div class="eg-row-label"><div class="fw-dot" style="background:var(--cdp);"></div>CDP</div>
+      <div class="eg-cell"><span class="eg-val-code" style="color:var(--cdp);">C6.1</span></div>
+      <div class="eg-cell"><span class="eg-val-label">Emissions · Scope 1</span></div>
+      <div class="eg-cell"><span class="eg-val-label">Gross global Scope 1 emissions (metric tons CO2e)</span></div>
+      <div class="eg-cell"><span class="eg-val-req req-yes">✓ Mandatory</span></div>
+      <div class="eg-cell"><span class="eg-val-label">exact</span></div>
+
+      <!-- GRI -->
+      <div class="eg-row-label"><div class="fw-dot" style="background:var(--gri);"></div>GRI</div>
+      <div class="eg-cell"><span class="eg-val-code" style="color:var(--gri);">GRI 305-1</span></div>
+      <div class="eg-cell"><span class="eg-val-label">Emissions · Direct GHG</span></div>
+      <div class="eg-cell"><span class="eg-val-label">Direct (Scope 1) GHG emissions in metric tons CO2 equivalent</span></div>
+      <div class="eg-cell"><span class="eg-val-req req-cond">~ If material</span></div>
+      <div class="eg-cell"><span class="eg-val-label">exact</span></div>
+
+      <!-- IFRS -->
+      <div class="eg-row-label"><div class="fw-dot" style="background:var(--ifrs);"></div>IFRS S2</div>
+      <div class="eg-cell"><span class="eg-val-code" style="color:var(--ifrs);">S2.29(a)</span></div>
+      <div class="eg-cell"><span class="eg-val-label">Metrics &amp; Targets · GHG emissions</span></div>
+      <div class="eg-cell"><span class="eg-val-label">Scope 1 greenhouse gas emissions</span></div>
+      <div class="eg-cell"><span class="eg-val-req req-yes">✓ Mandatory</span></div>
+      <div class="eg-cell"><span class="eg-val-label">exact</span></div>
+
+      <!-- TCFD -->
+      <div class="eg-row-label"><div class="fw-dot" style="background:var(--tcfd);"></div>TCFD</div>
+      <div class="eg-cell"><span class="eg-val-code" style="color:var(--tcfd);">Metrics C</span></div>
+      <div class="eg-cell"><span class="eg-val-label">Metrics &amp; Targets</span></div>
+      <div class="eg-cell"><span class="eg-val-label">Scope 1 GHG emissions</span></div>
+      <div class="eg-cell"><span class="eg-val-req req-yes">✓ Recommended</span></div>
+      <div class="eg-cell"><span class="eg-val-label">exact</span></div>
+    </div>
+  </div>
+
+  <!-- LEGEND -->
+  <div class="legend">
+    <div class="legend-item"><div class="leg-box" style="background:var(--map-bg);border:1.5px solid var(--map-border);"></div>Mapping table</div>
+    <div class="legend-item"><div class="leg-box" style="background:var(--canon-bg);border:1.5px solid var(--canon-border);"></div>Canonical model</div>
+    <div class="legend-item"><div class="leg-box" style="background:var(--render-bg);border:1.5px solid var(--render-border);"></div>Render layer</div>
+    <div class="legend-item"><div class="leg-box" style="background:var(--future-bg);border:1.5px dashed var(--future-border);"></div>Future extension</div>
+    <div class="legend-item"><div class="leg-line" style="background:#059669;"></div>Exact match</div>
+    <div class="legend-item"><div class="leg-line" style="background:#D97706;"></div>Partial match</div>
+    <div class="legend-item"><div class="leg-dash"></div>Optional / future</div>
+    <span style="margin-left:auto;font-size:11px;color:#9CA3AF;">PK = Primary Key · FK = Foreign Key · UUID = Universal Unique Identifier</span>
+  </div>
+
+  <div class="footer">
+    <span>ESG Canonical Model · Architecture v1.0 · Confidential</span>
+    <span>Product Manager · Backend Lead · Frontend Lead</span>
+    <span>Generated on <script>document.write(new Date().toLocaleDateString('en-GB'))</script></span>
+  </div>
+
+</div>
+</div>
+
+</body>
+</html>
