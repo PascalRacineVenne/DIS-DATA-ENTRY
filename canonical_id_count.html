@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Canonical ID Count — Framework Estimation</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #F8F9FA;
+            --paper: #ffffff;
+            --ink: #1C1F2A;
+            --ink2: #4B5263;
+            --ink3: #8B92A5;
+            --border: #E2E4EA;
+            --border2: #F0F1F5;
+
+            --e: #059669;
+            --e-bg: #ECFDF5;
+            --e-b: #A7F3D0;
+            --s: #7C3AED;
+            --s-bg: #F5F3FF;
+            --s-b: #DDD6FE;
+            --g: #D97706;
+            --g-bg: #FFFBEB;
+            --g-b: #FDE68A;
+            --x: #0891B2;
+            --x-bg: #ECFEFF;
+            --x-b: #A5F3FC;
+
+            --csrd: #6366F1;
+            --csrd-bg: #EEF2FF;
+            --csrd-b: #C7D2FE;
+            --cdp: #10B981;
+            --cdp-bg: #ECFDF5;
+            --cdp-b: #A7F3D0;
+            --gri: #F59E0B;
+            --gri-bg: #FFFBEB;
+            --gri-b: #FDE68A;
+            --ifrs: #3B82F6;
+            --ifrs-bg: #EFF6FF;
+            --ifrs-b: #BFDBFE;
+            --tcfd: #8B5CF6;
+            --tcfd-bg: #F5F3FF;
+            --tcfd-b: #DDD6FE;
+            --comm: #14B8A6;
+            --comm-bg: #F0FDFA;
+            --comm-b: #99F6E4;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--ink);
+        }
+
+        .header {
+            background: #1C1F2A;
+            color: white;
+            padding: 20px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .h-title {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .h-sub {
+            font-size: 12px;
+            color: #9CA3AF;
+            margin-top: 3px;
+        }
+
+        .h-tag {
+            font-size: 11px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            background: #374151;
+            color: #D1D5DB;
+            border: 1px solid #4B5563;
+        }
+
+        .page {
+            padding: 36px 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        .section-label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.10em;
+            text-transform: uppercase;
+            color: var(--ink3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* ── SUMMARY HERO ── */
+        .hero {
+            background: var(--paper);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px 36px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .hero-main {}
+
+        .hero-eyebrow {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--ink3);
+            margin-bottom: 10px;
+        }
+
+        .hero-number {
+            font-size: 64px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--ink);
+            line-height: 1;
+        }
+
+        .hero-number span {
+            font-size: 32px;
+            color: var(--ink3);
+        }
+
+        .hero-label {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--ink2);
+            margin-top: 8px;
+        }
+
+        .hero-desc {
+            font-size: 13px;
+            color: var(--ink3);
+            margin-top: 6px;
+            line-height: 1.6;
+            max-width: 480px;
+        }
+
+        .hero-breakdown {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-width: 200px;
+        }
+
+        .hb-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border2);
+            background: var(--bg);
+        }
+
+        .hb-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .hb-label {
+            font-size: 12px;
+            font-weight: 500;
+            flex: 1;
+            color: var(--ink2);
+        }
+
+        .hb-count {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .hb-pct {
+            font-size: 10px;
+            color: var(--ink3);
+            min-width: 36px;
+            text-align: right;
+        }
+
+        /* ── FRAMEWORK CARDS ── */
+        .fw-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .fw-card {
+            background: var(--paper);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 24px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .fw-card-accent {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            border-radius: 14px 14px 0 0;
+        }
+
+        .fw-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .fw-name-block {}
+
+        .fw-name {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .fw-full {
+            font-size: 11px;
+            color: var(--ink3);
+            margin-top: 2px;
+        }
+
+        .fw-total {
+            text-align: right;
+        }
+
+        .fw-total-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 32px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .fw-total-label {
+            font-size: 10px;
+            color: var(--ink3);
+            margin-top: 2px;
+        }
+
+        .fw-bar-section {
+            margin-bottom: 16px;
+        }
+
+        .fw-bar-row {
+            margin-bottom: 8px;
+        }
+
+        .fw-bar-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+        }
+
+        .fw-bar-name {
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .fw-bar-nums {
+            font-size: 11px;
+            color: var(--ink3);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .fw-bar-track {
+            height: 8px;
+            background: var(--border2);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .fw-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+        }
+
+        .fw-topics {
+            margin-top: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .fw-topic {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--border2);
+            font-size: 11px;
+        }
+
+        .fw-topic:last-child {
+            border-bottom: none;
+        }
+
+        .ft-domain {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 3px;
+            flex-shrink: 0;
+            letter-spacing: 0.04em;
+        }
+
+        .ft-name {
+            flex: 1;
+            color: var(--ink2);
+        }
+
+        .ft-count {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink);
+        }
+
+        .ft-note {
+            font-size: 9px;
+            color: var(--ink3);
+            font-style: italic;
+        }
+
+        /* ── COMMON CORE TABLE ── */
+        .core-section {
+            background: var(--paper);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 24px;
+        }
+
+        .core-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .core-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+        }
+
+        .cc-domain {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .cc-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .cc-items {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .cc-item {
+            font-size: 11px;
+            color: var(--ink2);
+            line-height: 1.4;
+            padding: 3px 0;
+            border-bottom: 1px solid var(--border2);
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 8px;
+        }
+
+        .cc-item:last-child {
+            border-bottom: none;
+        }
+
+        .cc-item .ci-name {
+            flex: 1;
+        }
+
+        .cc-item .ci-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--ink);
+            flex-shrink: 0;
+        }
+
+        .core-note {
+            background: var(--comm-bg);
+            border: 1px solid var(--comm-b);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 12px;
+            color: #0F766E;
+            line-height: 1.6;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .core-note .cn-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        /* ── WHAT COUNTS TABLE ── */
+        .counts-table {
+            background: var(--paper);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+
+        .ct-header {
+            background: #1C1F2A;
+            color: white;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr 80px 80px 80px;
+            padding: 10px 20px;
+            gap: 12px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .ct-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr 80px 80px 80px;
+            padding: 10px 20px;
+            gap: 12px;
+            border-bottom: 1px solid var(--border2);
+            font-size: 11px;
+            align-items: center;
+        }
+
+        .ct-row:last-child {
+            border-bottom: none;
+        }
+
+        .ct-row:nth-child(even) {
+            background: var(--bg);
+        }
+
+        .ct-slug {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--x);
+        }
+
+        .ct-label {
+            color: var(--ink2);
+        }
+
+        .ct-domain {}
+
+        .ct-type {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--ink3);
+        }
+
+        .fw-dot-sm {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 2px;
+        }
+
+        /* ── PHASING ── */
+        .phase-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+        }
+
+        .phase-card {
+            background: var(--paper);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .phase-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .phase-num {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .phase-title {
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .phase-count {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .phase-label {
+            font-size: 11px;
+            color: var(--ink3);
+            margin-bottom: 12px;
+        }
+
+        .phase-items {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .phase-item {
+            font-size: 11px;
+            color: var(--ink2);
+            padding: 3px 0;
+            border-bottom: 1px solid var(--border2);
+            display: flex;
+            gap: 6px;
+        }
+
+        .phase-item:last-child {
+            border-bottom: none;
+        }
+
+        .phase-item::before {
+            content: '·';
+            color: var(--ink3);
+        }
+
+        .footer {
+            padding: 16px 40px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--ink3);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <div>
+            <div class="h-title">Canonical ID Count — Framework Estimation</div>
+            <div class="h-sub">How many distinct data points need to be collected across CSRD, CDP, GRI, IFRS S2 and
+                TCFD</div>
+        </div>
+        <span class="h-tag">Estimation · ± 15%</span>
+        <a href="/DIS-DATA-ENTRY/"><button>Home</button></a>
+    </div>
+
+    <div class="page">
+
+        <!-- ══ HERO ══ -->
+        <div>
+            <div class="section-label">Total unique canonical IDs across all frameworks</div>
+            <div class="hero">
+                <div class="hero-main">
+                    <div class="hero-eyebrow">Estimated canonical IDs — full coverage</div>
+                    <div class="hero-number">400 <span>– 600</span></div>
+                    <div class="hero-label">unique data points to collect</div>
+                    <div class="hero-desc">
+                        This is not 400–600 questions per framework. This is the total universe of distinct metrics once
+                        overlaps are removed. Because ~60% of IDs are shared across frameworks, the actual unique
+                        collection burden is much lower than the sum of each framework's requirements. Start with the
+                        ~120 shared core — those alone cover 75–85% of any single framework's quantitative needs.
+                    </div>
+                </div>
+                <div class="hero-breakdown">
+                    <div class="hb-row">
+                        <div class="hb-dot" style="background:#059669;"></div>
+                        <div class="hb-label">Environment (E)</div>
+                        <div class="hb-count" style="color:#059669;">180–230</div>
+                        <div class="hb-pct">~42%</div>
+                    </div>
+                    <div class="hb-row">
+                        <div class="hb-dot" style="background:#7C3AED;"></div>
+                        <div class="hb-label">Social (S)</div>
+                        <div class="hb-count" style="color:#7C3AED;">130–180</div>
+                        <div class="hb-pct">~33%</div>
+                    </div>
+                    <div class="hb-row">
+                        <div class="hb-dot" style="background:#D97706;"></div>
+                        <div class="hb-label">Governance (G)</div>
+                        <div class="hb-count" style="color:#D97706;">50–80</div>
+                        <div class="hb-pct">~14%</div>
+                    </div>
+                    <div class="hb-row">
+                        <div class="hb-dot" style="background:#0891B2;"></div>
+                        <div class="hb-label">Cross-cutting (X)</div>
+                        <div class="hb-count" style="color:#0891B2;">40–60</div>
+                        <div class="hb-pct">~11%</div>
+                    </div>
+                    <div
+                        style="padding:10px 14px;font-size:10px;color:var(--ink3);text-align:center;border-top:1px solid var(--border2);margin-top:4px;">
+                        ~240 shared across 2+ frameworks<br>~160–360 framework-specific additions
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ PER FRAMEWORK ══ -->
+        <div>
+            <div class="section-label">Breakdown per framework — quantitative data points only</div>
+            <div class="fw-grid">
+
+                <!-- CSRD -->
+                <div class="fw-card">
+                    <div class="fw-card-accent" style="background:var(--csrd);"></div>
+                    <div class="fw-header">
+                        <div class="fw-name-block">
+                            <div class="fw-name" style="color:var(--csrd);">CSRD / ESRS</div>
+                            <div class="fw-full">Corporate Sustainability Reporting Directive</div>
+                        </div>
+                        <div class="fw-total">
+                            <div class="fw-total-num" style="color:var(--csrd);">250–320</div>
+                            <div class="fw-total-label">canonical IDs</div>
+                        </div>
+                    </div>
+                    <div class="fw-bar-section">
+                        <div class="fw-bar-row">
+                            <div class="fw-bar-header">
+                                <span class="fw-bar-name" style="color:var(--e);">Environment (E1–E5)</span>
+                                <span class="fw-bar-nums">~140</span>
+                            </div>
+                            <div class="fw-bar-track">
+                                <div class="fw-bar-fill" style="width:88%;background:var(--e);"></div>
+                            </div>
+                        </div>
+                        <div class="fw-bar-row">
+                            <div class="fw-bar-header">
+                                <span class="fw-bar-name" style="color:var(--s);">Social (S1–S4)</span>
+                                <span class="fw-bar-nums">~100</span>
+                            </div>
+                            <div class="fw-bar-track">
+                                <div class="fw-bar-fill" style="width:63%;background:var(--s);"></div>
+                            </div>
+                        </div>
+                        <div class="fw-bar-row">
+                            <div class="fw-bar-header">
+                                <span class="fw-bar-name" style="color:var(--g);">Governance (G1)</span>
+                                <span class="fw-bar-nums">~30</span>
+                            </div>
+                            <div class="fw-bar-track">
+                                <div class="fw-bar-fill" style="width:19%;background:var(--g);"></div>
+                            </div>
+                        </div>
+                        <div class="fw-bar-row">
+                            <div class="fw-bar-header">
+                                <span class="fw-bar-name" style="color:var(--x);">Cross-cutting (ESRS 1–2)</span>
+                                <span class="fw-bar-nums">~50</span>
+                            </div>
+                            <div class="fw-bar-track">
+                                <div class="fw-bar-fill" style="width:31%;background:var(--x);"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="fw-topics">
+                        <div class="fw-topic">
+                            <span class="ft-domain" style="background:var(--e-bg);color:var(--e);">E1</span>
+                            <span class="ft-name">GHG emissions, transition plan, scenario analysis</span>
+                            <span class="ft-count">~70</span>
+                        </div>
+                        <div class="fw-topic">
+                            <span class="ft-domain" style="background:var(--e-bg);color:var(--e);">E2–E5</span>
+                            <span class="ft-name">Pollution, water, biodiversity, circular economy</span>
+                            <span class="ft-count">~70</span>
+                        </div>
+                        <div class="fw-topic">
+                            <span class="ft-domain" style="background:var(--s-bg);color:var(--s);">S1</span>
+                            <span class="ft-name">Own workforce (headcount, wages, safety, diversity)</span>
+                            <span class="ft-count">~60</span>
+                        </div>
+                        <div class="fw-topic">
+                            <span class="ft-domain" style="background:var(--s-bg);color:var(--s);">S2–S4</span>
+                            <span class="ft-name">Value chain workers, communities, consumers</span>
+                            <span class="ft-count">~40</span>
+                        </div>
+                        <div class="fw-topic">
+                            <span class="ft-domain" style="background:var(--g-bg);color:var(--g);">G1</span>
+                            <span class="ft-name">Business conduct, anti-corruption, whistleblower</span>
+                            <span class="ft-count">~30</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CDP -->
+                <div class="fw-card">
+                    <div class="fw-card-accent" style="background:var(--cdp);"></div>
+                    <div class="fw-header">
+                        <div class="fw-name-block">
+                            <div class="fw-name" style="color:var(--cdp);">CDP</div>
+                            <div class="fw-full">Carbon Disclosure Project — Climate (C), Water (W), Forests (F)</div>
+                        </div>
+                        <div class="fw-total">
+                            <div class="fw-total-num" style="color:var(--cdp);">120–160</div>
+                            <div class="fw-total-label">canonical IDs</div>
+                        </div>
+                    </div>
+                    <div class="fw-bar-section">
+                        <div class="fw-bar-row">
+                            <div class="fw-bar-header">
+                                <span class="fw-bar-name" style="color:var(--e);">Climate (C) — GHG, risks,
+                                    strategy</span>
+                                <span class="fw-bar-nums">~80</span>
+                            </div>
+                            <div class="fw-bar-track">
+                                <div class="fw-bar-fill" style="width:100%;background:var(--e);"></div>
+                            </div>
+                        </div>
+                        <div class="fw-bar-row">
+                            <div class="fw-bar-header">
+                                <span class="fw-bar-name" style="color:var(--e);">Water (W) — withdrawal, stress,
+                                    targets</span>
+                                <span class="fw-bar-nums">~40</span>
+                            </div>
+                            <div class="fw-bar-track">
+                                <div class="fw-bar-fill" style="width:50%;background:#0EA5E9;"></div>
+                            </div>
+                        </div>
+                        <div class="fw-bar-row">
+                            <div class="fw-bar-header">
+                                <span class="fw-bar-name" style="color:var(--e);">Forests (F) — deforestation,
+                                    commodities</span>
+                                <span class="fw-bar-nums">~40</span>
+                            </div>
+                            <div class="fw-bar-track">
+                                <div class="fw-bar-fill" style="width:50%;background:#22C55E;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="fw-topics">
+                        <div class="fw-topic">
+                            <span class="ft-domain" style="background:var(--e-bg);color:var(--e);">C6</span>
+                            <span class="ft-name">Scope 1, 2, 3 — all categories, biogenic</span>
+                            <span class="ft-count">~25</span>
+                        </div>
+                        <div class="fw-topic">
+                            <span class="ft-domain" style="background:var(--e-bg);color:var(--e);">C2–C4</span>
+                            <span class="ft-name">Risks, opportunities, scenario analysis</span>
+                            <span class="ft-count">~25</span>
+                        </div>
+                        <div class="fw-topic">
+                            <span class="ft-domain" style="background:var(--e-bg);color:var(--e);">C4–C7</span>
+                            <span class="ft-name">Energy, targets, carbon pricing, engagement</span>
+                            <span class="ft-count">~30</span>
+                        </div>
+                        <div class="fw-topic">
+                            <span class="ft-domain" style="background:#E0F2FE;color:#0369A1;">W</span>
+                            <span class="ft-name">Water withdrawal, consumption, stress sites</span>
+                            <span class="ft-count">~40</span>
+                        </div>
+                        <div class="fw-topic">
+                            <span class="ft-domain" style="background:#DCFCE7;color:#166534;">F</span>
+                            <span class="ft-name">Commodity volumes, deforestation commitments</span>
+                            <span class="ft-count">~40</span>
+                            <span class="ft-note">if applicable</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GRI -->
+                <div class="fw-card">
+                    <div class="fw-card-accent" style="background:var(--gri);"></div>
+                    <div class="fw-header">
+                        <div class="fw-name-block">
+                            <div class="fw-name" style="color:var(--gri);">GRI</div>
+                            <div class="fw-full">Global Reporting Initiative — Standards 200 / 300 / 400</div>
+                        </div>
+                        <div class="fw-total">
+                            <div class="fw-total-num" style="color:var(--gri);">200–260</div>
+                            <div class="fw-total-label">canonical IDs</div>
+                        </div>
+                    </div>
+                    <div class="fw-bar-section">
+                        <div class="fw-bar-row">
+                            <div class="fw-bar-header">
+                                <span class="fw-bar-name" style="color:var(--e);">GRI 300 — Environment</span>
+                                <span class="fw-bar-nums">~90</span>
+                            </div>
+                            <div class="fw-bar-track">
+                                <div class="fw-bar-fill" style="width:88%;background:var(--e);"></div>
+                            </div>
+                        </div>
+                        <div class="fw-bar-row">
+                            <div class="fw-bar-header">
+                                <span class="fw-bar-name" style="color:var(--s);">GRI 400 — Social (19 standards)</span>
+                                <span class="fw-bar-nums">~100</span>
+                            </div>
+                            <div class="fw-bar-track">
+                                <div class="fw-bar-fill" style="width:100%;background:var(--s);"></div>
+                            </div>
+                        </div>
+                        <div class="fw-bar-row">
+                            <div class="fw-bar-header">
+                                <span class="fw-bar-name" style="color:var(--g);">GRI 200 — Economic</span>
+                                <span class="fw-bar-nums">~40</span>
+                            </div>
+                            <div class="fw-bar-track">
+                                <div class="fw-bar-fill" style="width:39%;background:var(--g);"></div>
+                            </div>
+                        </div>
+                        <div class="fw-bar-row">
+                            <div class="fw-bar-header">
+                                <span class="fw-bar-name" style="color:var(--x);">GRI 2 — Universal standards</span>
+                                <span class="fw-bar-nums">~30</span>
+                            </div>
+                            <div class="fw-bar-track">
+                                <div class="fw-bar-fill" style="width:29%;background:var(--x);"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="fw-topics">
+                        <div class="fw-topic">
+                            <span class="ft-domain" style="background:var(--e-bg);color:var(--e);">302–308</span>
+                            <span class="ft-name">Energy, water, biodiversity, emissions, waste</span>
+                            <span class="ft-count">~90</span>
+                        </div>
+                        <div class="fw-topic">
+                            <span class="ft-domain" style="background:var(--s-bg);color:var(--s);">401–407</span>
+                            <span class="ft-name">Employment, labor relations, OHS, training, diversity</span>
+                            <span class="ft-count">~55</span>
+                        </div>
+                        <div class="fw-topic">
+                            <span class="ft-domain" style="background:var(--s-bg);color:var(--s);">408–418</span>
+                            <span class="ft-name">Human rights, communities, customer privacy</span>
+                            <span class="ft-count">~45</span>
+                        </div>
+                        <div class="fw-topic">
+                            <span class="ft-domain" style="background:var(--g-bg);color:var(--g);">201–207</span>
+                            <span class="ft-name">Economic performance, anti-corruption, tax</span>
+                            <span class="ft-count">~40</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- IFRS + TCFD -->
+                <div style="display:flex;flex-direction:column;gap:16px;">
+
+                    <div class="fw-card">
+                        <div class="fw-card-accent" style="background:var(--ifrs);"></div>
+                        <div class="fw-header">
+                            <div class="fw-name-block">
+                                <div class="fw-name" style="color:var(--ifrs);">IFRS S1 / S2</div>
+                                <div class="fw-full">ISSB Sustainability Disclosure Standards</div>
+                            </div>
+                            <div class="fw-total">
+                                <div class="fw-total-num" style="color:var(--ifrs);">80–110</div>
+                                <div class="fw-total-label">canonical IDs</div>
+                            </div>
+                        </div>
+                        <div class="fw-bar-section">
+                            <div class="fw-bar-row">
+                                <div class="fw-bar-header">
+                                    <span class="fw-bar-name" style="color:var(--e);">Climate — GHG, risks, scenarios
+                                        (S2)</span>
+                                    <span class="fw-bar-nums">~60</span>
+                                </div>
+                                <div class="fw-bar-track">
+                                    <div class="fw-bar-fill" style="width:100%;background:var(--e);"></div>
+                                </div>
+                            </div>
+                            <div class="fw-bar-row">
+                                <div class="fw-bar-header">
+                                    <span class="fw-bar-name" style="color:var(--x);">Governance &amp; strategy — all
+                                        risks (S1)</span>
+                                    <span class="fw-bar-nums">~30</span>
+                                </div>
+                                <div class="fw-bar-track">
+                                    <div class="fw-bar-fill" style="width:50%;background:var(--x);"></div>
+                                </div>
+                            </div>
+                            <div class="fw-bar-row">
+                                <div class="fw-bar-header">
+                                    <span class="fw-bar-name" style="color:var(--ifrs);">Finance-specific (stranded
+                                        assets, PCAF)</span>
+                                    <span class="fw-bar-nums">~20</span>
+                                </div>
+                                <div class="fw-bar-track">
+                                    <div class="fw-bar-fill" style="width:33%;background:var(--ifrs);"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div
+                            style="margin-top:10px;padding:8px 10px;background:#EFF6FF;border-radius:6px;font-size:10px;color:#1D4ED8;line-height:1.5;">
+                            ~85% overlap with ESRS E1. Most IFRS S2 IDs already exist in the CSRD canonical set. Net new
+                            additions: ~15–25 finance-specific metrics.
+                        </div>
+                    </div>
+
+                    <div class="fw-card">
+                        <div class="fw-card-accent" style="background:var(--tcfd);"></div>
+                        <div class="fw-header">
+                            <div class="fw-name-block">
+                                <div class="fw-name" style="color:var(--tcfd);">TCFD</div>
+                                <div class="fw-full">Task Force on Climate-related Financial Disclosures</div>
+                            </div>
+                            <div class="fw-total">
+                                <div class="fw-total-num" style="color:var(--tcfd);">40–60</div>
+                                <div class="fw-total-label">canonical IDs</div>
+                            </div>
+                        </div>
+                        <div style="font-size:11px;color:var(--ink2);line-height:1.6;margin-bottom:10px;">
+                            TCFD is the narrowest framework — climate only, 4 pillars. Almost all its data points are
+                            already covered by CSRD E1 and IFRS S2. Net new IDs from TCFD alone: near zero.
+                        </div>
+                        <div
+                            style="padding:8px 10px;background:var(--tcfd-bg);border-radius:6px;font-size:10px;color:var(--tcfd);line-height:1.5;">
+                            TCFD was dissolved in 2023 and absorbed into IFRS S2. In practice, if you cover CSRD E1 +
+                            IFRS S2, TCFD is covered automatically. No dedicated TCFD-only canonical IDs are needed.
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ══ COMMON CORE ══ -->
+        <div>
+            <div class="section-label">The shared core — ~120 IDs that feed every framework simultaneously</div>
+            <div class="core-section">
+                <div class="core-grid">
+
+                    <div class="core-card">
+                        <div class="cc-domain">
+                            <div class="cc-dot" style="background:var(--e);"></div><span
+                                style="color:var(--e);">Environment — ~65 shared IDs</span>
+                        </div>
+                        <div class="cc-items">
+                            <div class="cc-item"><span class="ci-name">GHG Scope 1 (total + breakdown)</span><span
+                                    class="ci-num">~8</span></div>
+                            <div class="cc-item"><span class="ci-name">GHG Scope 2 (market + location)</span><span
+                                    class="ci-num">~6</span></div>
+                            <div class="cc-item"><span class="ci-name">GHG Scope 3 (15 categories)</span><span
+                                    class="ci-num">~18</span></div>
+                            <div class="cc-item"><span class="ci-name">Energy consumption &amp; renewables</span><span
+                                    class="ci-num">~8</span></div>
+                            <div class="cc-item"><span class="ci-name">Water withdrawal &amp; consumption</span><span
+                                    class="ci-num">~6</span></div>
+                            <div class="cc-item"><span class="ci-name">Waste generated &amp; diverted</span><span
+                                    class="ci-num">~6</span></div>
+                            <div class="cc-item"><span class="ci-name">Climate targets &amp; base year</span><span
+                                    class="ci-num">~8</span></div>
+                            <div class="cc-item"><span class="ci-name">Physical &amp; transition risk
+                                    exposure</span><span class="ci-num">~5</span></div>
+                        </div>
+                    </div>
+
+                    <div class="core-card">
+                        <div class="cc-domain">
+                            <div class="cc-dot" style="background:var(--s);"></div><span style="color:var(--s);">Social
+                                — ~35 shared IDs</span>
+                        </div>
+                        <div class="cc-items">
+                            <div class="cc-item"><span class="ci-name">Total headcount (FTE + part-time)</span><span
+                                    class="ci-num">~4</span></div>
+                            <div class="cc-item"><span class="ci-name">Employee turnover rate</span><span
+                                    class="ci-num">~2</span></div>
+                            <div class="cc-item"><span class="ci-name">Lost time injury rate (LTIR)</span><span
+                                    class="ci-num">~3</span></div>
+                            <div class="cc-item"><span class="ci-name">Fatalities (employees + contractors)</span><span
+                                    class="ci-num">~2</span></div>
+                            <div class="cc-item"><span class="ci-name">Gender ratio (workforce + leadership)</span><span
+                                    class="ci-num">~4</span></div>
+                            <div class="cc-item"><span class="ci-name">Training hours per employee</span><span
+                                    class="ci-num">~2</span></div>
+                            <div class="cc-item"><span class="ci-name">Collective bargaining coverage</span><span
+                                    class="ci-num">~2</span></div>
+                            <div class="cc-item"><span class="ci-name">Pay ratio (CEO vs median employee)</span><span
+                                    class="ci-num">~2</span></div>
+                        </div>
+                    </div>
+
+                    <div class="core-card">
+                        <div class="cc-domain">
+                            <div class="cc-dot" style="background:var(--g);"></div><span
+                                style="color:var(--g);">Governance + Cross — ~20 shared IDs</span>
+                        </div>
+                        <div class="cc-items">
+                            <div class="cc-item"><span class="ci-name">Board ESG oversight (structure)</span><span
+                                    class="ci-num">~3</span></div>
+                            <div class="cc-item"><span class="ci-name">% executive pay linked to ESG</span><span
+                                    class="ci-num">~2</span></div>
+                            <div class="cc-item"><span class="ci-name">Anti-corruption training coverage</span><span
+                                    class="ci-num">~2</span></div>
+                            <div class="cc-item"><span class="ci-name">Confirmed corruption incidents</span><span
+                                    class="ci-num">~2</span></div>
+                            <div class="cc-item"><span class="ci-name">Whistleblower mechanism (Y/N)</span><span
+                                    class="ci-num">~1</span></div>
+                            <div class="cc-item"><span class="ci-name">Revenue by geography</span><span
+                                    class="ci-num">~2</span></div>
+                            <div class="cc-item"><span class="ci-name">Reporting boundary &amp; scope</span><span
+                                    class="ci-num">~3</span></div>
+                            <div class="cc-item"><span class="ci-name">Materiality assessment outputs</span><span
+                                    class="ci-num">~5</span></div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="core-note">
+                    <div class="cn-icon">💡</div>
+                    <div><strong>Build this first.</strong> These ~120 shared IDs are your MVP. They cover the tronc
+                        commun across all five frameworks and represent the minimum viable canonical model. Every
+                        organization — regardless of which frameworks they report to — will need most of these. The
+                        remaining 280–480 IDs are additive: deeper CSRD social requirements, GRI human rights, IFRS
+                        finance-specific metrics, CDP forests.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ BUILD PHASING ══ -->
+        <div>
+            <div class="section-label">Recommended build order</div>
+            <div class="phase-grid">
+
+                <div class="phase-card">
+                    <div class="phase-header">
+                        <div class="phase-num" style="background:#ECFDF5;color:#059669;border:2px solid #A7F3D0;">1
+                        </div>
+                        <div class="phase-title" style="color:#059669;">MVP — Shared core</div>
+                    </div>
+                    <div class="phase-count" style="color:#059669;">~120</div>
+                    <div class="phase-label">canonical IDs · covers 75–85% of any single framework</div>
+                    <div class="phase-items">
+                        <div class="phase-item">All GHG Scope 1, 2, 3 metrics</div>
+                        <div class="phase-item">Energy, water, waste essentials</div>
+                        <div class="phase-item">Climate risks + scenario metadata</div>
+                        <div class="phase-item">Core workforce metrics</div>
+                        <div class="phase-item">Basic governance + anti-corruption</div>
+                        <div class="phase-item">Materiality process fields</div>
+                    </div>
+                </div>
+
+                <div class="phase-card">
+                    <div class="phase-header">
+                        <div class="phase-num" style="background:#EFF6FF;color:#3B82F6;border:2px solid #BFDBFE;">2
+                        </div>
+                        <div class="phase-title" style="color:#3B82F6;">V2 — CSRD full + IFRS S2</div>
+                    </div>
+                    <div class="phase-count" style="color:#3B82F6;">~200</div>
+                    <div class="phase-label">additional IDs · regulatory-grade coverage</div>
+                    <div class="phase-items">
+                        <div class="phase-item">ESRS E2–E5 (pollution, water detail, biodiversity, circular)</div>
+                        <div class="phase-item">ESRS S1 full (wages, diversity breakdown, training)</div>
+                        <div class="phase-item">ESRS S2–S4 (value chain, communities, consumers)</div>
+                        <div class="phase-item">ESRS G1 full (conduct, lobbying, suppliers)</div>
+                        <div class="phase-item">IFRS S2 finance-specific (stranded assets, PCAF, carbon price)</div>
+                        <div class="phase-item">Taxonomy alignment (CapEx, OpEx, revenue %)</div>
+                    </div>
+                </div>
+
+                <div class="phase-card">
+                    <div class="phase-header">
+                        <div class="phase-num" style="background:#FFFBEB;color:#D97706;border:2px solid #FDE68A;">3
+                        </div>
+                        <div class="phase-title" style="color:#D97706;">V3 — GRI depth + CDP forests</div>
+                    </div>
+                    <div class="phase-count" style="color:#D97706;">~80–160</div>
+                    <div class="phase-label">additional IDs · voluntary reporting depth</div>
+                    <div class="phase-items">
+                        <div class="phase-item">GRI 400 human rights depth (child labor, forced labor, indigenous)</div>
+                        <div class="phase-item">GRI 207 tax (country-by-country reporting)</div>
+                        <div class="phase-item">GRI sector-specific standards (if applicable)</div>
+                        <div class="phase-item">CDP Forests (commodity volumes, zero-deforestation commitments)</div>
+                        <div class="phase-item">CDP Water depth (facility-level stress analysis)</div>
+                        <div class="phase-item">Any future framework additions (mapping rows only)</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        <span>Canonical ID Count · Estimation ±15% · v1.0</span>
+        <span>Actual count varies by sector — financial services and extractives will skew higher · Narrative-only
+            requirements excluded</span>
+    </div>
+
+</body>
+
+</html>
