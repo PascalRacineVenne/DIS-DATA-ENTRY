@@ -1,579 +1,1094 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="utf-8">
-<title>Retroactive DS Linking — Architecture Flow</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #F0F2F5;
-    --canvas: #fff;
-    --grid: #E8EBF0;
-    --text: #1A1D23;
-    --muted: #6B7280;
-    --faint: #9CA3AF;
-    --border: #D1D5DB;
-    --shadow: 0 2px 8px rgba(0,0,0,0.08);
-    --shadow-lg: 0 6px 20px rgba(0,0,0,0.10);
+  <meta charset="utf-8">
+  <title>Retroactive DS Linking — Architecture Flow</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-    --canon:  #0EA5E9; --canon-bg:  #F0F9FF; --canon-b:  #BAE6FD;
-    --tmpl:   #8B5CF6; --tmpl-bg:   #F5F3FF; --tmpl-b:   #DDD6FE;
-    --ds:     #10B981; --ds-bg:     #ECFDF5; --ds-b:     #A7F3D0;
-    --warn:   #F59E0B; --warn-bg:   #FFFBEB; --warn-b:   #FDE68A;
-    --danger: #EF4444; --danger-bg: #FEF2F2; --danger-b: #FECACA;
-    --ok:     #10B981; --ok-bg:     #ECFDF5; --ok-b:     #A7F3D0;
-    --map:    #F97316; --map-bg:    #FFF7ED; --map-b:    #FED7AA;
-    --info:   #6366F1; --info-bg:   #EEF2FF; --info-b:   #C7D2FE;
-    --new:    #0EA5E9;
-  }
-  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-  .header {
-    background: #111827; color: #fff; padding: 16px 36px;
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .h-title { font-size: 14px; font-weight: 600; }
-  .h-sub   { font-size: 11px; color: #9CA3AF; margin-top: 2px; }
-  .h-tags  { display: flex; gap: 8px; }
-  .h-tag   { font-size: 11px; padding: 3px 10px; border-radius: 20px; background: #1F2937; color: #9CA3AF; border: 1px solid #374151; }
-  .h-tag.accent { background: #1e3a5f; color: #7DD3FC; border-color: #1d4ed8; }
+    :root {
+      --bg: #F0F2F5;
+      --canvas: #fff;
+      --grid: #E8EBF0;
+      --text: #1A1D23;
+      --muted: #6B7280;
+      --faint: #9CA3AF;
+      --border: #D1D5DB;
+      --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      --shadow-lg: 0 6px 20px rgba(0, 0, 0, 0.10);
 
-  .canvas { padding: 36px; }
-  .board  {
-    background: var(--canvas);
-    background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-    background-size: 24px 24px;
-    border-radius: 12px; border: 1px solid var(--border);
-    box-shadow: var(--shadow-lg); padding: 40px 36px;
-  }
+      --canon: #0EA5E9;
+      --canon-bg: #F0F9FF;
+      --canon-b: #BAE6FD;
+      --tmpl: #8B5CF6;
+      --tmpl-bg: #F5F3FF;
+      --tmpl-b: #DDD6FE;
+      --ds: #10B981;
+      --ds-bg: #ECFDF5;
+      --ds-b: #A7F3D0;
+      --warn: #F59E0B;
+      --warn-bg: #FFFBEB;
+      --warn-b: #FDE68A;
+      --danger: #EF4444;
+      --danger-bg: #FEF2F2;
+      --danger-b: #FECACA;
+      --ok: #10B981;
+      --ok-bg: #ECFDF5;
+      --ok-b: #A7F3D0;
+      --map: #F97316;
+      --map-bg: #FFF7ED;
+      --map-b: #FED7AA;
+      --info: #6366F1;
+      --info-bg: #EEF2FF;
+      --info-b: #C7D2FE;
+      --new: #0EA5E9;
+    }
 
-  .slabel {
-    font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
-    color: var(--faint); margin-bottom: 14px;
-    display: flex; align-items: center; gap: 8px;
-  }
-  .slabel::after { content:''; flex:1; height:1px; background: var(--border); }
-  .slabel .step-num {
-    width: 20px; height: 20px; border-radius: 50%;
-    background: var(--text); color: white;
-    font-size: 10px; font-weight: 700;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-  }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
 
-  .connector {
-    display: flex; justify-content: center; margin: 14px 0;
-  }
-  .conn-inner { display: flex; flex-direction: column; align-items: center; }
-  .conn-line  { width: 2px; height: 20px; background: #CBD5E1; }
-  .conn-label {
-    font-size: 10px; font-weight: 600; padding: 3px 12px;
-    border-radius: 10px; border: 1px solid; margin: 3px 0; white-space: nowrap;
-  }
-  .conn-arrow { width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; }
+    .header {
+      background: #111827;
+      color: #fff;
+      padding: 16px 36px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
 
-  /* ── PHASE BOXES ── */
-  .phase {
-    border-radius: 10px; border: 1.5px solid; padding: 20px 24px;
-    box-shadow: var(--shadow); margin-bottom: 0;
-  }
-  .phase-title {
-    font-size: 13px; font-weight: 700; margin-bottom: 4px;
-    display: flex; align-items: center; gap: 8px;
-  }
-  .phase-icon {
-    width: 22px; height: 22px; border-radius: 5px;
-    display: flex; align-items: center; justify-content: center;
-    color: white; font-size: 12px; flex-shrink: 0;
-  }
-  .phase-sub { font-size: 11px; opacity: 0.7; margin-bottom: 16px; }
+    .h-title {
+      font-size: 14px;
+      font-weight: 600;
+    }
 
-  /* ── ASSESSMENT GRID ── */
-  .assess-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-  .assess-card {
-    background: white; border: 1px solid var(--border); border-radius: 8px;
-    padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  }
-  .ac-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
-  .ac-score {
-    font-size: 22px; font-weight: 700; margin-bottom: 4px;
-    font-family: 'JetBrains Mono', monospace;
-  }
-  .ac-desc { font-size: 11px; color: var(--muted); line-height: 1.5; }
-  .ac-tag  { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 3px; display: inline-block; margin-top: 6px; }
+    .h-sub {
+      font-size: 11px;
+      color: #9CA3AF;
+      margin-top: 2px;
+    }
 
-  /* ── MAPPING TABLE ── */
-  .map-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-  .map-table th {
-    text-align: left; padding: 8px 12px; font-size: 10px; font-weight: 700;
-    letter-spacing: 0.04em; background: #1E293B; color: white;
-  }
-  .map-table th:first-child { border-radius: 6px 0 0 0; }
-  .map-table th:last-child  { border-radius: 0 6px 0 0; }
-  .map-table td { padding: 8px 12px; border-bottom: 1px solid #F1F5F9; }
-  .map-table tr:last-child td { border-bottom: none; }
-  .map-table tr:nth-child(even) td { background: #FAFAFA; }
-  .map-table .mono { font-family: 'JetBrains Mono', monospace; font-size: 10px; }
-  .map-table .arrow { color: var(--faint); text-align: center; }
+    .h-tags {
+      display: flex;
+      gap: 8px;
+    }
 
-  .status-pill {
-    font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 10px;
-    white-space: nowrap; display: inline-block;
-  }
-  .s-exact   { background: #DCFCE7; color: #15803D; }
-  .s-mapped  { background: #DBEAFE; color: #1D4ED8; }
-  .s-missing { background: #FEF3C7; color: #92400E; }
-  .s-extra   { background: #F3F4F6; color: #6B7280; }
-  .s-auto    { background: #EDE9FE; color: #6D28D9; }
+    .h-tag {
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: #1F2937;
+      color: #9CA3AF;
+      border: 1px solid #374151;
+    }
 
-  /* ── CONFIDENCE METER ── */
-  .confidence-row { display: flex; gap: 12px; align-items: stretch; }
-  .conf-card {
-    flex: 1; background: white; border: 1px solid var(--border);
-    border-radius: 8px; padding: 12px 14px;
-  }
-  .conf-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--faint); margin-bottom: 8px; }
-  .conf-bar-wrap { margin-bottom: 6px; }
-  .conf-bar-label { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 3px; color: var(--muted); }
-  .conf-bar-bg { height: 6px; background: #F1F5F9; border-radius: 3px; overflow: hidden; }
-  .conf-bar-fill { height: 100%; border-radius: 3px; }
-  .conf-verdict {
-    font-size: 11px; font-weight: 600; padding: 6px 10px;
-    border-radius: 6px; border: 1px solid; margin-top: 8px;
-    display: flex; align-items: center; gap: 6px;
-  }
+    .h-tag.accent {
+      background: #1e3a5f;
+      color: #7DD3FC;
+      border-color: #1d4ed8;
+    }
 
-  /* ── SCHEMA DIFF ── */
-  .diff-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0; align-items: start; }
-  .diff-panel { background: white; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-  .diff-header { padding: 10px 14px; font-size: 11px; font-weight: 700; }
-  .diff-row {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 6px 14px; border-bottom: 1px solid #F8FAFC; font-size: 11px;
-  }
-  .diff-row:last-child { border-bottom: none; }
-  .diff-col { font-family: 'JetBrains Mono', monospace; font-size: 10px; }
-  .diff-type { font-size: 9px; color: var(--faint); }
-  .diff-arrow-col {
-    display: flex; flex-direction: column; align-items: center;
-    justify-content: center; padding: 0 16px; gap: 12px;
-    padding-top: 52px;
-  }
-  .diff-link {
-    font-size: 9px; font-weight: 600; padding: 2px 8px;
-    border-radius: 10px; border: 1px solid; white-space: nowrap;
-    text-align: center;
-  }
-  .row-existing  { background: #FAFAFA; }
-  .row-new-add   { background: #F0FDF4; }
-  .row-new-add .diff-col { color: #059669; }
-  .row-unmatched { background: #FFFBEB; }
-  .row-unmatched .diff-col { color: #92400E; }
+    .canvas {
+      padding: 36px;
+    }
 
-  /* ── COLUMN RESOLVER ── */
-  .resolver { background: white; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-  .resolver-header {
-    background: #0F172A; color: white; padding: 10px 16px;
-    font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 8px;
-  }
-  .resolver-row {
-    display: grid; grid-template-columns: 1fr 40px 1fr 80px 80px;
-    align-items: center; gap: 0;
-    padding: 10px 16px; border-bottom: 1px solid #F1F5F9; font-size: 11px;
-  }
-  .resolver-row:last-child { border-bottom: none; }
-  .resolver-row.header-row {
-    background: #F8FAFC; font-size: 10px; font-weight: 700;
-    color: var(--faint); text-transform: uppercase; letter-spacing: 0.05em;
-    padding: 8px 16px;
-  }
-  .res-col { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; }
-  .res-arrow { text-align: center; color: var(--faint); font-size: 14px; }
-  .res-conf { text-align: center; }
-  .res-action { text-align: center; }
-  .conf-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .board {
+      background: var(--canvas);
+      background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: 24px 24px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg);
+      padding: 40px 36px;
+    }
 
-  /* ── RESULT STATE ── */
-  .result-states { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-  .result-card {
-    border-radius: 8px; border: 1.5px solid; padding: 16px;
-    box-shadow: var(--shadow);
-  }
-  .rc-icon  { font-size: 18px; margin-bottom: 8px; }
-  .rc-title { font-size: 12px; font-weight: 700; margin-bottom: 6px; }
-  .rc-body  { font-size: 11px; line-height: 1.6; }
-  .rc-code  {
-    font-family: 'JetBrains Mono', monospace; font-size: 10px;
-    background: rgba(0,0,0,0.04); padding: 4px 8px; border-radius: 4px;
-    margin-top: 8px; display: block; line-height: 1.6;
-  }
+    .slabel {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--faint);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
 
-  /* ── DS LINK TABLE ── */
-  .link-table { background: white; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-  .link-table table { width: 100%; border-collapse: collapse; font-size: 11px; }
-  .link-table th { background: #1E293B; color: white; padding: 8px 12px; text-align: left; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; }
-  .link-table td { padding: 8px 12px; border-bottom: 1px solid #F1F5F9; }
-  .link-table tr:last-child td { border-bottom: none; }
-  .link-table .mono { font-family: 'JetBrains Mono', monospace; font-size: 10px; }
-  .link-type { font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 3px; }
+    .slabel::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
 
-  /* ── PRINCIPLE BOX ── */
-  .principle-box {
-    background: #1E293B; color: white; border-radius: 10px;
-    padding: 20px 24px; margin-top: 32px;
-  }
-  .pb-title { font-size: 12px; font-weight: 700; color: #93C5FD; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.06em; }
-  .pb-grid  { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-  .pb-item  { background: #0F172A; border: 1px solid #334155; border-radius: 8px; padding: 14px; }
-  .pb-icon  { font-size: 16px; margin-bottom: 8px; }
-  .pb-name  { font-size: 11px; font-weight: 600; color: #E2E8F0; margin-bottom: 5px; }
-  .pb-desc  { font-size: 11px; color: #94A3B8; line-height: 1.5; }
+    .slabel .step-num {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--text);
+      color: white;
+      font-size: 10px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
 
-  .footer {
-    margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--border);
-    display: flex; justify-content: space-between; font-size: 11px; color: var(--faint);
-  }
-</style>
+    .connector {
+      display: flex;
+      justify-content: center;
+      margin: 14px 0;
+    }
+
+    .conn-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .conn-line {
+      width: 2px;
+      height: 20px;
+      background: #CBD5E1;
+    }
+
+    .conn-label {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 12px;
+      border-radius: 10px;
+      border: 1px solid;
+      margin: 3px 0;
+      white-space: nowrap;
+    }
+
+    .conn-arrow {
+      width: 0;
+      height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+    }
+
+    /* ── PHASE BOXES ── */
+    .phase {
+      border-radius: 10px;
+      border: 1.5px solid;
+      padding: 20px 24px;
+      box-shadow: var(--shadow);
+      margin-bottom: 0;
+    }
+
+    .phase-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .phase-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .phase-sub {
+      font-size: 11px;
+      opacity: 0.7;
+      margin-bottom: 16px;
+    }
+
+    /* ── ASSESSMENT GRID ── */
+    .assess-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    .assess-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .ac-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+    }
+
+    .ac-score {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .ac-desc {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .ac-tag {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 3px;
+      display: inline-block;
+      margin-top: 6px;
+    }
+
+    /* ── MAPPING TABLE ── */
+    .map-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+
+    .map-table th {
+      text-align: left;
+      padding: 8px 12px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      background: #1E293B;
+      color: white;
+    }
+
+    .map-table th:first-child {
+      border-radius: 6px 0 0 0;
+    }
+
+    .map-table th:last-child {
+      border-radius: 0 6px 0 0;
+    }
+
+    .map-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #F1F5F9;
+    }
+
+    .map-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .map-table tr:nth-child(even) td {
+      background: #FAFAFA;
+    }
+
+    .map-table .mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+    }
+
+    .map-table .arrow {
+      color: var(--faint);
+      text-align: center;
+    }
+
+    .status-pill {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 10px;
+      white-space: nowrap;
+      display: inline-block;
+    }
+
+    .s-exact {
+      background: #DCFCE7;
+      color: #15803D;
+    }
+
+    .s-mapped {
+      background: #DBEAFE;
+      color: #1D4ED8;
+    }
+
+    .s-missing {
+      background: #FEF3C7;
+      color: #92400E;
+    }
+
+    .s-extra {
+      background: #F3F4F6;
+      color: #6B7280;
+    }
+
+    .s-auto {
+      background: #EDE9FE;
+      color: #6D28D9;
+    }
+
+    /* ── CONFIDENCE METER ── */
+    .confidence-row {
+      display: flex;
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .conf-card {
+      flex: 1;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+
+    .conf-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--faint);
+      margin-bottom: 8px;
+    }
+
+    .conf-bar-wrap {
+      margin-bottom: 6px;
+    }
+
+    .conf-bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      margin-bottom: 3px;
+      color: var(--muted);
+    }
+
+    .conf-bar-bg {
+      height: 6px;
+      background: #F1F5F9;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .conf-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+    }
+
+    .conf-verdict {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid;
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ── SCHEMA DIFF ── */
+    .diff-grid {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 0;
+      align-items: start;
+    }
+
+    .diff-panel {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .diff-header {
+      padding: 10px 14px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .diff-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 14px;
+      border-bottom: 1px solid #F8FAFC;
+      font-size: 11px;
+    }
+
+    .diff-row:last-child {
+      border-bottom: none;
+    }
+
+    .diff-col {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+    }
+
+    .diff-type {
+      font-size: 9px;
+      color: var(--faint);
+    }
+
+    .diff-arrow-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0 16px;
+      gap: 12px;
+      padding-top: 52px;
+    }
+
+    .diff-link {
+      font-size: 9px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      border: 1px solid;
+      white-space: nowrap;
+      text-align: center;
+    }
+
+    .row-existing {
+      background: #FAFAFA;
+    }
+
+    .row-new-add {
+      background: #F0FDF4;
+    }
+
+    .row-new-add .diff-col {
+      color: #059669;
+    }
+
+    .row-unmatched {
+      background: #FFFBEB;
+    }
+
+    .row-unmatched .diff-col {
+      color: #92400E;
+    }
+
+    /* ── COLUMN RESOLVER ── */
+    .resolver {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .resolver-header {
+      background: #0F172A;
+      color: white;
+      padding: 10px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .resolver-row {
+      display: grid;
+      grid-template-columns: 1fr 40px 1fr 80px 80px;
+      align-items: center;
+      gap: 0;
+      padding: 10px 16px;
+      border-bottom: 1px solid #F1F5F9;
+      font-size: 11px;
+    }
+
+    .resolver-row:last-child {
+      border-bottom: none;
+    }
+
+    .resolver-row.header-row {
+      background: #F8FAFC;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--faint);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 8px 16px;
+    }
+
+    .res-col {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .res-arrow {
+      text-align: center;
+      color: var(--faint);
+      font-size: 14px;
+    }
+
+    .res-conf {
+      text-align: center;
+    }
+
+    .res-action {
+      text-align: center;
+    }
+
+    .conf-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    /* ── RESULT STATE ── */
+    .result-states {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    .result-card {
+      border-radius: 8px;
+      border: 1.5px solid;
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .rc-icon {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    .rc-title {
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .rc-body {
+      font-size: 11px;
+      line-height: 1.6;
+    }
+
+    .rc-code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      background: rgba(0, 0, 0, 0.04);
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin-top: 8px;
+      display: block;
+      line-height: 1.6;
+    }
+
+    /* ── DS LINK TABLE ── */
+    .link-table {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .link-table table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+
+    .link-table th {
+      background: #1E293B;
+      color: white;
+      padding: 8px 12px;
+      text-align: left;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    .link-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #F1F5F9;
+    }
+
+    .link-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .link-table .mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+    }
+
+    .link-type {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+
+    /* ── PRINCIPLE BOX ── */
+    .principle-box {
+      background: #1E293B;
+      color: white;
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-top: 32px;
+    }
+
+    .pb-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #93C5FD;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .pb-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .pb-item {
+      background: #0F172A;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 14px;
+    }
+
+    .pb-icon {
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+
+    .pb-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: #E2E8F0;
+      margin-bottom: 5px;
+    }
+
+    .pb-desc {
+      font-size: 11px;
+      color: #94A3B8;
+      line-height: 1.5;
+    }
+
+    .footer {
+      margin-top: 28px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--faint);
+    }
+  </style>
 </head>
+
 <body>
 
-<div class="header">
-  <div>
-    <div class="h-title">Retroactive DataSource Linking — Architecture Flow</div>
-    <div class="h-sub">How an existing DS gets linked to a canonical_id without destructive schema changes</div>
-  </div>
-  <div class="h-tags">
-    <span class="h-tag accent">Core principle: never remove, only add</span>
-    <span class="h-tag">v1.0</span>
-  </div>
-</div>
-
-<div class="canvas">
-<div class="board">
-
-  <!-- ══ STEP 1: ASSESSMENT ══ -->
-  <div class="slabel"><span class="step-num">1</span>Assessment — Analyze the existing DS before any action</div>
-  <div class="phase" style="background:var(--info-bg);border-color:var(--info-b);">
-    <div class="phase-title" style="color:var(--info);">
-      <div class="phase-icon" style="background:var(--info);">◎</div>
-      Schema Analyzer
-      <span style="font-size:10px;font-weight:400;opacity:0.6;margin-left:4px;">— Runs before showing the user anything</span>
+  <div class="header">
+    <div>
+      <div class="h-title">Retroactive DataSource Linking — Architecture Flow</div>
+      <div class="h-sub">How an existing DS gets linked to a canonical_id without destructive schema changes</div>
     </div>
-    <div class="phase-sub" style="color:#4338CA;">The system compares the existing DS column structure against the target canonical template. Three metrics are computed automatically.</div>
-    <div class="assess-grid">
-      <div class="assess-card">
-        <div class="ac-label" style="color:#059669;">Column Coverage</div>
-        <div class="ac-score" style="color:#059669;">67%</div>
-        <div class="ac-desc">4 of 5 required template columns are present in the existing DS — exact name or compatible type match.</div>
-        <span class="ac-tag" style="background:#DCFCE7;color:#15803D;">AUTO-MAPPABLE</span>
-      </div>
-      <div class="assess-card">
-        <div class="ac-label" style="color:#D97706;">Missing Required</div>
-        <div class="ac-score" style="color:#D97706;">1</div>
-        <div class="ac-desc">1 required template column is absent from the existing DS schema. Must be added before linking can be completed.</div>
-        <span class="ac-tag" style="background:#FEF3C7;color:#92400E;">NEEDS ADDITION</span>
-      </div>
-      <div class="assess-card">
-        <div class="ac-label" style="color:#6B7280;">Extra Columns</div>
-        <div class="ac-score" style="color:#6B7280;">3</div>
-        <div class="ac-desc">3 columns exist in the DS but have no equivalent in the template. They are preserved as-is — never removed.</div>
-        <span class="ac-tag" style="background:#F3F4F6;color:#6B7280;">KEPT UNTOUCHED</span>
-      </div>
+    <div class="h-tags">
+      <span class="h-tag accent">Core principle: never remove, only add</span>
+      <span class="h-tag">v1.0</span>
     </div>
+    <a href="/index.html"><button>Home</button></a>
   </div>
 
-  <div class="connector">
-    <div class="conn-inner">
-      <div class="conn-line"></div>
-      <div class="conn-label" style="background:#F0F9FF;color:var(--canon);border-color:var(--canon-b);">assessment complete → show column resolver to user</div>
-      <div class="conn-line"></div>
-      <div class="conn-arrow" style="border-top-color:var(--map);"></div>
-    </div>
-  </div>
+  <div class="canvas">
+    <div class="board">
 
-  <!-- ══ STEP 2: COLUMN RESOLVER ══ -->
-  <div class="slabel"><span class="step-num">2</span>Column Resolver — System suggests, user confirms</div>
-  <div class="phase" style="background:var(--map-bg);border-color:var(--map-b);">
-    <div class="phase-title" style="color:var(--map);">
-      <div class="phase-icon" style="background:var(--map);">⇄</div>
-      Column Mapping Interface
-      <span style="font-size:10px;font-weight:400;opacity:0.6;margin-left:4px;">— Mix of auto-detection and user confirmation</span>
-    </div>
-    <div class="phase-sub" style="color:#C2410C;">The system auto-maps where confidence is high (name match, type match). It flags ambiguous cases for user review. Missing required columns are surfaced clearly.</div>
-
-    <div class="resolver">
-      <div class="resolver-header">
-        <span>◎</span> Column mapping — GHG_SCOPE1_DIRECT_tCO2e template vs. existing DS
-      </div>
-      <div class="resolver-row header-row">
-        <span>Existing DS column</span>
-        <span></span>
-        <span>Template column</span>
-        <span>Confidence</span>
-        <span>Action</span>
-      </div>
-
-      <!-- Exact match -->
-      <div class="resolver-row" style="background:#F0FDF4;">
-        <span class="res-col" style="color:#059669;">year</span>
-        <span class="res-arrow">→</span>
-        <span class="res-col" style="color:#059669;">reporting_year</span>
-        <span class="res-conf"><span class="conf-dot" style="background:#10B981;"></span> High</span>
-        <span class="res-action"><span class="status-pill s-auto">Auto-mapped</span></span>
-      </div>
-
-      <!-- Name match -->
-      <div class="resolver-row" style="background:#F0FDF4;">
-        <span class="res-col" style="color:#059669;">facility</span>
-        <span class="res-arrow">→</span>
-        <span class="res-col" style="color:#059669;">facility_id</span>
-        <span class="res-conf"><span class="conf-dot" style="background:#10B981;"></span> High</span>
-        <span class="res-action"><span class="status-pill s-auto">Auto-mapped</span></span>
-      </div>
-
-      <!-- Type match, name differs -->
-      <div class="resolver-row" style="background:#FFFBEB;">
-        <span class="res-col" style="color:#92400E;">emissions_mt</span>
-        <span class="res-arrow" style="color:#F59E0B;">→?</span>
-        <span class="res-col" style="color:#92400E;">value_tco2e</span>
-        <span class="res-conf"><span class="conf-dot" style="background:#F59E0B;"></span> Medium</span>
-        <span class="res-action"><span class="status-pill s-mapped">Confirm</span></span>
-      </div>
-
-      <!-- Another medium -->
-      <div class="resolver-row" style="background:#FFFBEB;">
-        <span class="res-col" style="color:#92400E;">method</span>
-        <span class="res-arrow" style="color:#F59E0B;">→?</span>
-        <span class="res-col" style="color:#92400E;">methodology</span>
-        <span class="res-conf"><span class="conf-dot" style="background:#F59E0B;"></span> Medium</span>
-        <span class="res-action"><span class="status-pill s-mapped">Confirm</span></span>
-      </div>
-
-      <!-- Missing required -->
-      <div class="resolver-row" style="background:#FEF2F2;">
-        <span class="res-col" style="color:#DC2626;font-style:italic;">— not found —</span>
-        <span class="res-arrow" style="color:#DC2626;">✕</span>
-        <span class="res-col" style="color:#DC2626;">data_source_ref</span>
-        <span class="res-conf"><span class="conf-dot" style="background:#EF4444;"></span> None</span>
-        <span class="res-action"><span class="status-pill" style="background:#FEF2F2;color:#DC2626;">Add column</span></span>
-      </div>
-
-      <!-- Extra columns — kept -->
-      <div class="resolver-row" style="background:#F9FAFB;">
-        <span class="res-col" style="color:#9CA3AF;">department</span>
-        <span class="res-arrow" style="color:#D1D5DB;">—</span>
-        <span class="res-col" style="color:#D1D5DB;font-style:italic;">no template match</span>
-        <span class="res-conf"><span class="conf-dot" style="background:#D1D5DB;"></span> —</span>
-        <span class="res-action"><span class="status-pill s-extra">Kept as-is</span></span>
-      </div>
-      <div class="resolver-row" style="background:#F9FAFB;">
-        <span class="res-col" style="color:#9CA3AF;">cost_center</span>
-        <span class="res-arrow" style="color:#D1D5DB;">—</span>
-        <span class="res-col" style="color:#D1D5DB;font-style:italic;">no template match</span>
-        <span class="res-conf"><span class="conf-dot" style="background:#D1D5DB;"></span> —</span>
-        <span class="res-action"><span class="status-pill s-extra">Kept as-is</span></span>
-      </div>
-      <div class="resolver-row" style="background:#F9FAFB;">
-        <span class="res-col" style="color:#9CA3AF;">internal_ref</span>
-        <span class="res-arrow" style="color:#D1D5DB;">—</span>
-        <span class="res-col" style="color:#D1D5DB;font-style:italic;">no template match</span>
-        <span class="res-conf"><span class="conf-dot" style="background:#D1D5DB;"></span> —</span>
-        <span class="res-action"><span class="status-pill s-extra">Kept as-is</span></span>
-      </div>
-    </div>
-  </div>
-
-  <div class="connector">
-    <div class="conn-inner">
-      <div class="conn-line"></div>
-      <div class="conn-label" style="background:var(--ds-bg);color:var(--ds);border-color:var(--ds-b);">user confirms mapping → system applies changes</div>
-      <div class="conn-line"></div>
-      <div class="conn-arrow" style="border-top-color:var(--ds);"></div>
-    </div>
-  </div>
-
-  <!-- ══ STEP 3: SCHEMA DIFF ══ -->
-  <div class="slabel"><span class="step-num">3</span>Schema Diff — What changes in the existing DS (additive only)</div>
-  <div class="phase" style="background:var(--ds-bg);border-color:var(--ds-b);">
-    <div class="phase-title" style="color:var(--ds);">
-      <div class="phase-icon" style="background:var(--ds);">⊕</div>
-      Schema Patch — Additive only
-      <span style="font-size:10px;font-weight:400;opacity:0.6;margin-left:4px;">— Existing columns are never renamed, retyped, or removed</span>
-    </div>
-    <div class="phase-sub" style="color:#059669;">Only one column is added to the existing DS schema. Everything else is untouched. A ds_column_mapping record is written for each matched pair.</div>
-
-    <div class="diff-grid">
-      <!-- Before -->
-      <div class="diff-panel">
-        <div class="diff-header" style="background:#F8FAFC;color:var(--muted);border-bottom:1px solid var(--border);">
-          Before — existing DS schema
+      <!-- ══ STEP 1: ASSESSMENT ══ -->
+      <div class="slabel"><span class="step-num">1</span>Assessment — Analyze the existing DS before any action</div>
+      <div class="phase" style="background:var(--info-bg);border-color:var(--info-b);">
+        <div class="phase-title" style="color:var(--info);">
+          <div class="phase-icon" style="background:var(--info);">◎</div>
+          Schema Analyzer
+          <span style="font-size:10px;font-weight:400;opacity:0.6;margin-left:4px;">— Runs before showing the user
+            anything</span>
         </div>
-        <div class="diff-row row-existing"><span class="diff-col">year</span><span class="diff-type">Date</span></div>
-        <div class="diff-row row-existing"><span class="diff-col">facility</span><span class="diff-type">Text</span></div>
-        <div class="diff-row row-existing"><span class="diff-col">emissions_mt</span><span class="diff-type">Number</span></div>
-        <div class="diff-row row-existing"><span class="diff-col">method</span><span class="diff-type">Text</span></div>
-        <div class="diff-row row-existing"><span class="diff-col">department</span><span class="diff-type">Text</span></div>
-        <div class="diff-row row-existing"><span class="diff-col">cost_center</span><span class="diff-type">Text</span></div>
-        <div class="diff-row row-existing"><span class="diff-col">internal_ref</span><span class="diff-type">Text</span></div>
-      </div>
-
-      <!-- Arrow col -->
-      <div class="diff-arrow-col" style="padding-top:48px;">
-        <div class="diff-link" style="background:var(--ds-bg);color:var(--ds);border-color:var(--ds-b);">mapped</div>
-        <div class="diff-link" style="background:var(--ds-bg);color:var(--ds);border-color:var(--ds-b);">mapped</div>
-        <div class="diff-link" style="background:#DBEAFE;color:#1D4ED8;border-color:#BFDBFE;">aliased</div>
-        <div class="diff-link" style="background:#DBEAFE;color:#1D4ED8;border-color:#BFDBFE;">aliased</div>
-        <div class="diff-link" style="background:#F3F4F6;color:#6B7280;border-color:#E5E7EB;">kept</div>
-        <div class="diff-link" style="background:#F3F4F6;color:#6B7280;border-color:#E5E7EB;">kept</div>
-        <div class="diff-link" style="background:#F3F4F6;color:#6B7280;border-color:#E5E7EB;">kept</div>
-        <div style="margin-top:6px;"><div class="diff-link" style="background:#F0FDF4;color:#059669;border-color:#A7F3D0;margin-bottom:4px;">+added</div></div>
-      </div>
-
-      <!-- After -->
-      <div class="diff-panel">
-        <div class="diff-header" style="background:#F0FDF4;color:#059669;border-bottom:1px solid var(--ds-b);">
-          After — DS schema with canonical link
+        <div class="phase-sub" style="color:#4338CA;">The system compares the existing DS column structure against the
+          target canonical template. Three metrics are computed automatically.</div>
+        <div class="assess-grid">
+          <div class="assess-card">
+            <div class="ac-label" style="color:#059669;">Column Coverage</div>
+            <div class="ac-score" style="color:#059669;">67%</div>
+            <div class="ac-desc">4 of 5 required template columns are present in the existing DS — exact name or
+              compatible type match.</div>
+            <span class="ac-tag" style="background:#DCFCE7;color:#15803D;">AUTO-MAPPABLE</span>
+          </div>
+          <div class="assess-card">
+            <div class="ac-label" style="color:#D97706;">Missing Required</div>
+            <div class="ac-score" style="color:#D97706;">1</div>
+            <div class="ac-desc">1 required template column is absent from the existing DS schema. Must be added before
+              linking can be completed.</div>
+            <span class="ac-tag" style="background:#FEF3C7;color:#92400E;">NEEDS ADDITION</span>
+          </div>
+          <div class="assess-card">
+            <div class="ac-label" style="color:#6B7280;">Extra Columns</div>
+            <div class="ac-score" style="color:#6B7280;">3</div>
+            <div class="ac-desc">3 columns exist in the DS but have no equivalent in the template. They are preserved
+              as-is — never removed.</div>
+            <span class="ac-tag" style="background:#F3F4F6;color:#6B7280;">KEPT UNTOUCHED</span>
+          </div>
         </div>
-        <div class="diff-row row-existing"><span class="diff-col">year</span><span class="diff-type">Date</span></div>
-        <div class="diff-row row-existing"><span class="diff-col">facility</span><span class="diff-type">Text</span></div>
-        <div class="diff-row row-existing"><span class="diff-col">emissions_mt</span><span class="diff-type">Number</span></div>
-        <div class="diff-row row-existing"><span class="diff-col">method</span><span class="diff-type">Text</span></div>
-        <div class="diff-row row-existing"><span class="diff-col">department</span><span class="diff-type">Text</span></div>
-        <div class="diff-row row-existing"><span class="diff-col">cost_center</span><span class="diff-type">Text</span></div>
-        <div class="diff-row row-existing"><span class="diff-col">internal_ref</span><span class="diff-type">Text</span></div>
-        <div class="diff-row row-new-add"><span class="diff-col">data_source_ref <span style="font-size:9px;background:#DCFCE7;color:#15803D;padding:1px 4px;border-radius:3px;font-weight:700;">NEW</span></span><span class="diff-type">Text</span></div>
       </div>
-    </div>
 
-    <!-- Mapping records -->
-    <div style="margin-top:16px;">
-      <div style="font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Written to ds_column_mapping table</div>
-      <div class="link-table">
-        <table>
-          <thead>
-            <tr>
-              <th>ds_id</th>
-              <th>ds_column</th>
-              <th>canonical_id</th>
-              <th>template_column</th>
-              <th>mapping_type</th>
-              <th>confidence</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="mono" style="color:var(--ds);">ds_a3f9</td>
-              <td class="mono">year</td>
-              <td class="mono" style="color:var(--canon);">GHG_SCOPE1_…</td>
-              <td class="mono">reporting_year</td>
-              <td><span class="link-type" style="background:#DCFCE7;color:#15803D;">exact</span></td>
-              <td class="mono">1.0</td>
-            </tr>
-            <tr>
-              <td class="mono" style="color:var(--ds);">ds_a3f9</td>
-              <td class="mono">facility</td>
-              <td class="mono" style="color:var(--canon);">GHG_SCOPE1_…</td>
-              <td class="mono">facility_id</td>
-              <td><span class="link-type" style="background:#DCFCE7;color:#15803D;">exact</span></td>
-              <td class="mono">1.0</td>
-            </tr>
-            <tr>
-              <td class="mono" style="color:var(--ds);">ds_a3f9</td>
-              <td class="mono">emissions_mt</td>
-              <td class="mono" style="color:var(--canon);">GHG_SCOPE1_…</td>
-              <td class="mono">value_tco2e</td>
-              <td><span class="link-type" style="background:#DBEAFE;color:#1D4ED8;">alias</span></td>
-              <td class="mono">0.85</td>
-            </tr>
-            <tr>
-              <td class="mono" style="color:var(--ds);">ds_a3f9</td>
-              <td class="mono">method</td>
-              <td class="mono" style="color:var(--canon);">GHG_SCOPE1_…</td>
-              <td class="mono">methodology</td>
-              <td><span class="link-type" style="background:#DBEAFE;color:#1D4ED8;">alias</span></td>
-              <td class="mono">0.82</td>
-            </tr>
-            <tr>
-              <td class="mono" style="color:var(--ds);">ds_a3f9</td>
-              <td class="mono">data_source_ref</td>
-              <td class="mono" style="color:var(--canon);">GHG_SCOPE1_…</td>
-              <td class="mono">data_source_ref</td>
-              <td><span class="link-type" style="background:#F0FDF4;color:#059669;">added</span></td>
-              <td class="mono">1.0</td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="connector">
+        <div class="conn-inner">
+          <div class="conn-line"></div>
+          <div class="conn-label" style="background:#F0F9FF;color:var(--canon);border-color:var(--canon-b);">assessment
+            complete → show column resolver to user</div>
+          <div class="conn-line"></div>
+          <div class="conn-arrow" style="border-top-color:var(--map);"></div>
+        </div>
       </div>
+
+      <!-- ══ STEP 2: COLUMN RESOLVER ══ -->
+      <div class="slabel"><span class="step-num">2</span>Column Resolver — System suggests, user confirms</div>
+      <div class="phase" style="background:var(--map-bg);border-color:var(--map-b);">
+        <div class="phase-title" style="color:var(--map);">
+          <div class="phase-icon" style="background:var(--map);">⇄</div>
+          Column Mapping Interface
+          <span style="font-size:10px;font-weight:400;opacity:0.6;margin-left:4px;">— Mix of auto-detection and user
+            confirmation</span>
+        </div>
+        <div class="phase-sub" style="color:#C2410C;">The system auto-maps where confidence is high (name match, type
+          match). It flags ambiguous cases for user review. Missing required columns are surfaced clearly.</div>
+
+        <div class="resolver">
+          <div class="resolver-header">
+            <span>◎</span> Column mapping — GHG_SCOPE1_DIRECT_tCO2e template vs. existing DS
+          </div>
+          <div class="resolver-row header-row">
+            <span>Existing DS column</span>
+            <span></span>
+            <span>Template column</span>
+            <span>Confidence</span>
+            <span>Action</span>
+          </div>
+
+          <!-- Exact match -->
+          <div class="resolver-row" style="background:#F0FDF4;">
+            <span class="res-col" style="color:#059669;">year</span>
+            <span class="res-arrow">→</span>
+            <span class="res-col" style="color:#059669;">reporting_year</span>
+            <span class="res-conf"><span class="conf-dot" style="background:#10B981;"></span> High</span>
+            <span class="res-action"><span class="status-pill s-auto">Auto-mapped</span></span>
+          </div>
+
+          <!-- Name match -->
+          <div class="resolver-row" style="background:#F0FDF4;">
+            <span class="res-col" style="color:#059669;">facility</span>
+            <span class="res-arrow">→</span>
+            <span class="res-col" style="color:#059669;">facility_id</span>
+            <span class="res-conf"><span class="conf-dot" style="background:#10B981;"></span> High</span>
+            <span class="res-action"><span class="status-pill s-auto">Auto-mapped</span></span>
+          </div>
+
+          <!-- Type match, name differs -->
+          <div class="resolver-row" style="background:#FFFBEB;">
+            <span class="res-col" style="color:#92400E;">emissions_mt</span>
+            <span class="res-arrow" style="color:#F59E0B;">→?</span>
+            <span class="res-col" style="color:#92400E;">value_tco2e</span>
+            <span class="res-conf"><span class="conf-dot" style="background:#F59E0B;"></span> Medium</span>
+            <span class="res-action"><span class="status-pill s-mapped">Confirm</span></span>
+          </div>
+
+          <!-- Another medium -->
+          <div class="resolver-row" style="background:#FFFBEB;">
+            <span class="res-col" style="color:#92400E;">method</span>
+            <span class="res-arrow" style="color:#F59E0B;">→?</span>
+            <span class="res-col" style="color:#92400E;">methodology</span>
+            <span class="res-conf"><span class="conf-dot" style="background:#F59E0B;"></span> Medium</span>
+            <span class="res-action"><span class="status-pill s-mapped">Confirm</span></span>
+          </div>
+
+          <!-- Missing required -->
+          <div class="resolver-row" style="background:#FEF2F2;">
+            <span class="res-col" style="color:#DC2626;font-style:italic;">— not found —</span>
+            <span class="res-arrow" style="color:#DC2626;">✕</span>
+            <span class="res-col" style="color:#DC2626;">data_source_ref</span>
+            <span class="res-conf"><span class="conf-dot" style="background:#EF4444;"></span> None</span>
+            <span class="res-action"><span class="status-pill" style="background:#FEF2F2;color:#DC2626;">Add
+                column</span></span>
+          </div>
+
+          <!-- Extra columns — kept -->
+          <div class="resolver-row" style="background:#F9FAFB;">
+            <span class="res-col" style="color:#9CA3AF;">department</span>
+            <span class="res-arrow" style="color:#D1D5DB;">—</span>
+            <span class="res-col" style="color:#D1D5DB;font-style:italic;">no template match</span>
+            <span class="res-conf"><span class="conf-dot" style="background:#D1D5DB;"></span> —</span>
+            <span class="res-action"><span class="status-pill s-extra">Kept as-is</span></span>
+          </div>
+          <div class="resolver-row" style="background:#F9FAFB;">
+            <span class="res-col" style="color:#9CA3AF;">cost_center</span>
+            <span class="res-arrow" style="color:#D1D5DB;">—</span>
+            <span class="res-col" style="color:#D1D5DB;font-style:italic;">no template match</span>
+            <span class="res-conf"><span class="conf-dot" style="background:#D1D5DB;"></span> —</span>
+            <span class="res-action"><span class="status-pill s-extra">Kept as-is</span></span>
+          </div>
+          <div class="resolver-row" style="background:#F9FAFB;">
+            <span class="res-col" style="color:#9CA3AF;">internal_ref</span>
+            <span class="res-arrow" style="color:#D1D5DB;">—</span>
+            <span class="res-col" style="color:#D1D5DB;font-style:italic;">no template match</span>
+            <span class="res-conf"><span class="conf-dot" style="background:#D1D5DB;"></span> —</span>
+            <span class="res-action"><span class="status-pill s-extra">Kept as-is</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="connector">
+        <div class="conn-inner">
+          <div class="conn-line"></div>
+          <div class="conn-label" style="background:var(--ds-bg);color:var(--ds);border-color:var(--ds-b);">user
+            confirms mapping → system applies changes</div>
+          <div class="conn-line"></div>
+          <div class="conn-arrow" style="border-top-color:var(--ds);"></div>
+        </div>
+      </div>
+
+      <!-- ══ STEP 3: SCHEMA DIFF ══ -->
+      <div class="slabel"><span class="step-num">3</span>Schema Diff — What changes in the existing DS (additive only)
+      </div>
+      <div class="phase" style="background:var(--ds-bg);border-color:var(--ds-b);">
+        <div class="phase-title" style="color:var(--ds);">
+          <div class="phase-icon" style="background:var(--ds);">⊕</div>
+          Schema Patch — Additive only
+          <span style="font-size:10px;font-weight:400;opacity:0.6;margin-left:4px;">— Existing columns are never
+            renamed, retyped, or removed</span>
+        </div>
+        <div class="phase-sub" style="color:#059669;">Only one column is added to the existing DS schema. Everything
+          else is untouched. A ds_column_mapping record is written for each matched pair.</div>
+
+        <div class="diff-grid">
+          <!-- Before -->
+          <div class="diff-panel">
+            <div class="diff-header"
+              style="background:#F8FAFC;color:var(--muted);border-bottom:1px solid var(--border);">
+              Before — existing DS schema
+            </div>
+            <div class="diff-row row-existing"><span class="diff-col">year</span><span class="diff-type">Date</span>
+            </div>
+            <div class="diff-row row-existing"><span class="diff-col">facility</span><span class="diff-type">Text</span>
+            </div>
+            <div class="diff-row row-existing"><span class="diff-col">emissions_mt</span><span
+                class="diff-type">Number</span></div>
+            <div class="diff-row row-existing"><span class="diff-col">method</span><span class="diff-type">Text</span>
+            </div>
+            <div class="diff-row row-existing"><span class="diff-col">department</span><span
+                class="diff-type">Text</span></div>
+            <div class="diff-row row-existing"><span class="diff-col">cost_center</span><span
+                class="diff-type">Text</span></div>
+            <div class="diff-row row-existing"><span class="diff-col">internal_ref</span><span
+                class="diff-type">Text</span></div>
+          </div>
+
+          <!-- Arrow col -->
+          <div class="diff-arrow-col" style="padding-top:48px;">
+            <div class="diff-link" style="background:var(--ds-bg);color:var(--ds);border-color:var(--ds-b);">mapped
+            </div>
+            <div class="diff-link" style="background:var(--ds-bg);color:var(--ds);border-color:var(--ds-b);">mapped
+            </div>
+            <div class="diff-link" style="background:#DBEAFE;color:#1D4ED8;border-color:#BFDBFE;">aliased</div>
+            <div class="diff-link" style="background:#DBEAFE;color:#1D4ED8;border-color:#BFDBFE;">aliased</div>
+            <div class="diff-link" style="background:#F3F4F6;color:#6B7280;border-color:#E5E7EB;">kept</div>
+            <div class="diff-link" style="background:#F3F4F6;color:#6B7280;border-color:#E5E7EB;">kept</div>
+            <div class="diff-link" style="background:#F3F4F6;color:#6B7280;border-color:#E5E7EB;">kept</div>
+            <div style="margin-top:6px;">
+              <div class="diff-link" style="background:#F0FDF4;color:#059669;border-color:#A7F3D0;margin-bottom:4px;">
+                +added</div>
+            </div>
+          </div>
+
+          <!-- After -->
+          <div class="diff-panel">
+            <div class="diff-header" style="background:#F0FDF4;color:#059669;border-bottom:1px solid var(--ds-b);">
+              After — DS schema with canonical link
+            </div>
+            <div class="diff-row row-existing"><span class="diff-col">year</span><span class="diff-type">Date</span>
+            </div>
+            <div class="diff-row row-existing"><span class="diff-col">facility</span><span class="diff-type">Text</span>
+            </div>
+            <div class="diff-row row-existing"><span class="diff-col">emissions_mt</span><span
+                class="diff-type">Number</span></div>
+            <div class="diff-row row-existing"><span class="diff-col">method</span><span class="diff-type">Text</span>
+            </div>
+            <div class="diff-row row-existing"><span class="diff-col">department</span><span
+                class="diff-type">Text</span></div>
+            <div class="diff-row row-existing"><span class="diff-col">cost_center</span><span
+                class="diff-type">Text</span></div>
+            <div class="diff-row row-existing"><span class="diff-col">internal_ref</span><span
+                class="diff-type">Text</span></div>
+            <div class="diff-row row-new-add"><span class="diff-col">data_source_ref <span
+                  style="font-size:9px;background:#DCFCE7;color:#15803D;padding:1px 4px;border-radius:3px;font-weight:700;">NEW</span></span><span
+                class="diff-type">Text</span></div>
+          </div>
+        </div>
+
+        <!-- Mapping records -->
+        <div style="margin-top:16px;">
+          <div
+            style="font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">
+            Written to ds_column_mapping table</div>
+          <div class="link-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>ds_id</th>
+                  <th>ds_column</th>
+                  <th>canonical_id</th>
+                  <th>template_column</th>
+                  <th>mapping_type</th>
+                  <th>confidence</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="mono" style="color:var(--ds);">ds_a3f9</td>
+                  <td class="mono">year</td>
+                  <td class="mono" style="color:var(--canon);">GHG_SCOPE1_…</td>
+                  <td class="mono">reporting_year</td>
+                  <td><span class="link-type" style="background:#DCFCE7;color:#15803D;">exact</span></td>
+                  <td class="mono">1.0</td>
+                </tr>
+                <tr>
+                  <td class="mono" style="color:var(--ds);">ds_a3f9</td>
+                  <td class="mono">facility</td>
+                  <td class="mono" style="color:var(--canon);">GHG_SCOPE1_…</td>
+                  <td class="mono">facility_id</td>
+                  <td><span class="link-type" style="background:#DCFCE7;color:#15803D;">exact</span></td>
+                  <td class="mono">1.0</td>
+                </tr>
+                <tr>
+                  <td class="mono" style="color:var(--ds);">ds_a3f9</td>
+                  <td class="mono">emissions_mt</td>
+                  <td class="mono" style="color:var(--canon);">GHG_SCOPE1_…</td>
+                  <td class="mono">value_tco2e</td>
+                  <td><span class="link-type" style="background:#DBEAFE;color:#1D4ED8;">alias</span></td>
+                  <td class="mono">0.85</td>
+                </tr>
+                <tr>
+                  <td class="mono" style="color:var(--ds);">ds_a3f9</td>
+                  <td class="mono">method</td>
+                  <td class="mono" style="color:var(--canon);">GHG_SCOPE1_…</td>
+                  <td class="mono">methodology</td>
+                  <td><span class="link-type" style="background:#DBEAFE;color:#1D4ED8;">alias</span></td>
+                  <td class="mono">0.82</td>
+                </tr>
+                <tr>
+                  <td class="mono" style="color:var(--ds);">ds_a3f9</td>
+                  <td class="mono">data_source_ref</td>
+                  <td class="mono" style="color:var(--canon);">GHG_SCOPE1_…</td>
+                  <td class="mono">data_source_ref</td>
+                  <td><span class="link-type" style="background:#F0FDF4;color:#059669;">added</span></td>
+                  <td class="mono">1.0</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="connector">
+        <div class="conn-inner">
+          <div class="conn-line"></div>
+          <div class="conn-label" style="background:var(--tmpl-bg);color:var(--tmpl);border-color:var(--tmpl-b);">
+            linking complete → framework_renderer uses ds_column_mapping to resolve values</div>
+          <div class="conn-line"></div>
+          <div class="conn-arrow" style="border-top-color:var(--tmpl);"></div>
+        </div>
+      </div>
+
+      <!-- ══ STEP 4: OUTCOME STATES ══ -->
+      <div class="slabel"><span class="step-num">4</span>Outcome States — Three possible results after assessment</div>
+      <div class="result-states">
+        <div class="result-card" style="background:var(--ok-bg);border-color:var(--ok-b);">
+          <div class="rc-icon">✅</div>
+          <div class="rc-title" style="color:#065F46;">Full match — link immediately</div>
+          <div class="rc-body" style="color:#047857;">All required template columns are present in the existing DS. No
+            schema change needed. The link is created instantly with no user action required beyond confirmation.</div>
+          <code class="rc-code" style="color:#065F46;">coverage: 100% · missing: 0 · action: link_only</code>
+        </div>
+        <div class="result-card" style="background:var(--warn-bg);border-color:var(--warn-b);">
+          <div class="rc-icon">⚠️</div>
+          <div class="rc-title" style="color:#92400E;">Partial match — resolve then link</div>
+          <div class="rc-body" style="color:#78350F;">Some columns match, some are missing or ambiguous. User goes
+            through the Column Resolver to confirm aliases and acknowledge added columns. Most common scenario.</div>
+          <code class="rc-code" style="color:#92400E;">coverage: 40–99% · action: resolve → add → link</code>
+        </div>
+        <div class="result-card" style="background:var(--danger-bg);border-color:var(--danger-b);">
+          <div class="rc-icon">🚫</div>
+          <div class="rc-title" style="color:#991B1B;">No match — block linking</div>
+          <div class="rc-body" style="color:#7F1D1D;">The existing DS is structurally incompatible — wrong domain, wrong
+            data type for the key metric. System explains why and suggests either creating a new DS from the template or
+            choosing a different canonical_id.</div>
+          <code class="rc-code" style="color:#991B1B;">coverage: &lt;30% · action: block + suggest alternative</code>
+        </div>
+      </div>
+
+      <!-- ══ CORE PRINCIPLES ══ -->
+      <div class="principle-box">
+        <div class="pb-title">Core design principles for retroactive linking</div>
+        <div class="pb-grid">
+          <div class="pb-item">
+            <div class="pb-icon">🔒</div>
+            <div class="pb-name">Never destructive</div>
+            <div class="pb-desc">Existing columns are never removed, renamed, or retyped. The DS schema only ever grows
+              — it never shrinks. Anything already connected to those columns keeps working.</div>
+          </div>
+          <div class="pb-item">
+            <div class="pb-icon">🗺</div>
+            <div class="pb-name">Mapping over migration</div>
+            <div class="pb-desc">The ds_column_mapping table is the bridge. The renderer reads original column names
+              through the mapping — the DS data itself is never touched or moved.</div>
+          </div>
+          <div class="pb-item">
+            <div class="pb-icon">🤝</div>
+            <div class="pb-name">System suggests, user confirms</div>
+            <div class="pb-desc">Auto-mapping runs first on name similarity and type compatibility. Ambiguous matches
+              (medium confidence) always require explicit user confirmation before being saved.</div>
+          </div>
+          <div class="pb-item">
+            <div class="pb-icon">📋</div>
+            <div class="pb-name">Full audit trail</div>
+            <div class="pb-desc">Every mapping decision is recorded: who confirmed it, when, with what confidence score.
+              This is essential for the framework audit requirement under CSRD and IFRS S2.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <span>Retroactive DS Linking — Architecture v1.0</span>
+        <span>Confidential · To be validated with Backend Lead &amp; PM</span>
+        <span>Core principle: additive only — never destructive</span>
+      </div>
+
     </div>
   </div>
-
-  <div class="connector">
-    <div class="conn-inner">
-      <div class="conn-line"></div>
-      <div class="conn-label" style="background:var(--tmpl-bg);color:var(--tmpl);border-color:var(--tmpl-b);">linking complete → framework_renderer uses ds_column_mapping to resolve values</div>
-      <div class="conn-line"></div>
-      <div class="conn-arrow" style="border-top-color:var(--tmpl);"></div>
-    </div>
-  </div>
-
-  <!-- ══ STEP 4: OUTCOME STATES ══ -->
-  <div class="slabel"><span class="step-num">4</span>Outcome States — Three possible results after assessment</div>
-  <div class="result-states">
-    <div class="result-card" style="background:var(--ok-bg);border-color:var(--ok-b);">
-      <div class="rc-icon">✅</div>
-      <div class="rc-title" style="color:#065F46;">Full match — link immediately</div>
-      <div class="rc-body" style="color:#047857;">All required template columns are present in the existing DS. No schema change needed. The link is created instantly with no user action required beyond confirmation.</div>
-      <code class="rc-code" style="color:#065F46;">coverage: 100% · missing: 0 · action: link_only</code>
-    </div>
-    <div class="result-card" style="background:var(--warn-bg);border-color:var(--warn-b);">
-      <div class="rc-icon">⚠️</div>
-      <div class="rc-title" style="color:#92400E;">Partial match — resolve then link</div>
-      <div class="rc-body" style="color:#78350F;">Some columns match, some are missing or ambiguous. User goes through the Column Resolver to confirm aliases and acknowledge added columns. Most common scenario.</div>
-      <code class="rc-code" style="color:#92400E;">coverage: 40–99% · action: resolve → add → link</code>
-    </div>
-    <div class="result-card" style="background:var(--danger-bg);border-color:var(--danger-b);">
-      <div class="rc-icon">🚫</div>
-      <div class="rc-title" style="color:#991B1B;">No match — block linking</div>
-      <div class="rc-body" style="color:#7F1D1D;">The existing DS is structurally incompatible — wrong domain, wrong data type for the key metric. System explains why and suggests either creating a new DS from the template or choosing a different canonical_id.</div>
-      <code class="rc-code" style="color:#991B1B;">coverage: &lt;30% · action: block + suggest alternative</code>
-    </div>
-  </div>
-
-  <!-- ══ CORE PRINCIPLES ══ -->
-  <div class="principle-box">
-    <div class="pb-title">Core design principles for retroactive linking</div>
-    <div class="pb-grid">
-      <div class="pb-item">
-        <div class="pb-icon">🔒</div>
-        <div class="pb-name">Never destructive</div>
-        <div class="pb-desc">Existing columns are never removed, renamed, or retyped. The DS schema only ever grows — it never shrinks. Anything already connected to those columns keeps working.</div>
-      </div>
-      <div class="pb-item">
-        <div class="pb-icon">🗺</div>
-        <div class="pb-name">Mapping over migration</div>
-        <div class="pb-desc">The ds_column_mapping table is the bridge. The renderer reads original column names through the mapping — the DS data itself is never touched or moved.</div>
-      </div>
-      <div class="pb-item">
-        <div class="pb-icon">🤝</div>
-        <div class="pb-name">System suggests, user confirms</div>
-        <div class="pb-desc">Auto-mapping runs first on name similarity and type compatibility. Ambiguous matches (medium confidence) always require explicit user confirmation before being saved.</div>
-      </div>
-      <div class="pb-item">
-        <div class="pb-icon">📋</div>
-        <div class="pb-name">Full audit trail</div>
-        <div class="pb-desc">Every mapping decision is recorded: who confirmed it, when, with what confidence score. This is essential for the framework audit requirement under CSRD and IFRS S2.</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="footer">
-    <span>Retroactive DS Linking — Architecture v1.0</span>
-    <span>Confidential · To be validated with Backend Lead &amp; PM</span>
-    <span>Core principle: additive only — never destructive</span>
-  </div>
-
-</div>
-</div>
 </body>
+
 </html>

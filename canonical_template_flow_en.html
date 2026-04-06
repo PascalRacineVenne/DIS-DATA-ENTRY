@@ -1,530 +1,1044 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="utf-8">
-<title>Canonical Template → DataSource — Architecture</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #F0F2F5;
-    --canvas: #ffffff;
-    --grid: #E8EBF0;
-    --text: #1A1D23;
-    --muted: #6B7280;
-    --faint: #9CA3AF;
-    --border: #D1D5DB;
-    --shadow: 0 2px 8px rgba(0,0,0,0.08);
-    --shadow-lg: 0 6px 20px rgba(0,0,0,0.10);
+  <meta charset="utf-8">
+  <title>Canonical Template → DataSource — Architecture</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-    --canon: #0EA5E9; --canon-bg: #F0F9FF; --canon-b: #BAE6FD;
-    --tmpl:  #8B5CF6; --tmpl-bg:  #F5F3FF; --tmpl-b:  #DDD6FE;
-    --ds:    #10B981; --ds-bg:    #ECFDF5; --ds-b:    #A7F3D0;
-    --fw:    #F59E0B; --fw-bg:    #FFFBEB; --fw-b:    #FDE68A;
-    --ext:   #6366F1; --ext-bg:   #EEF2FF; --ext-b:   #C7D2FE;
-    --lock:  #EF4444; --lock-bg:  #FEF2F2; --lock-b:  #FECACA;
-    --open:  #10B981; --open-bg:  #ECFDF5; --open-b:  #A7F3D0;
-    --csrd-bg: #EEF2FF; --csrd-b: #C7D2FE;
-    --cdp-bg:  #ECFDF5; --cdp-b:  #A7F3D0;
-    --gri-bg:  #FFFBEB; --gri-b:  #FDE68A;
-    --ifrs-bg: #EFF6FF; --ifrs-b: #BFDBFE;
-  }
-  body { font-family: 'Inter', sans-serif; background: var(--bg); padding: 0; color: var(--text); }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-  .header {
-    background: #111827; color: #fff;
-    padding: 16px 36px;
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .h-title { font-size: 14px; font-weight: 600; }
-  .h-sub   { font-size: 11px; color: #9CA3AF; margin-top: 2px; }
-  .h-tag   { font-size: 11px; padding: 3px 10px; border-radius: 20px; background: #1F2937; color: #9CA3AF; border: 1px solid #374151; }
+    :root {
+      --bg: #F0F2F5;
+      --canvas: #ffffff;
+      --grid: #E8EBF0;
+      --text: #1A1D23;
+      --muted: #6B7280;
+      --faint: #9CA3AF;
+      --border: #D1D5DB;
+      --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      --shadow-lg: 0 6px 20px rgba(0, 0, 0, 0.10);
 
-  .canvas  { padding: 36px; }
-  .board   {
-    background: var(--canvas);
-    background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-    background-size: 24px 24px;
-    border-radius: 12px; border: 1px solid var(--border);
-    box-shadow: var(--shadow-lg); padding: 40px 36px;
-  }
+      --canon: #0EA5E9;
+      --canon-bg: #F0F9FF;
+      --canon-b: #BAE6FD;
+      --tmpl: #8B5CF6;
+      --tmpl-bg: #F5F3FF;
+      --tmpl-b: #DDD6FE;
+      --ds: #10B981;
+      --ds-bg: #ECFDF5;
+      --ds-b: #A7F3D0;
+      --fw: #F59E0B;
+      --fw-bg: #FFFBEB;
+      --fw-b: #FDE68A;
+      --ext: #6366F1;
+      --ext-bg: #EEF2FF;
+      --ext-b: #C7D2FE;
+      --lock: #EF4444;
+      --lock-bg: #FEF2F2;
+      --lock-b: #FECACA;
+      --open: #10B981;
+      --open-bg: #ECFDF5;
+      --open-b: #A7F3D0;
+      --csrd-bg: #EEF2FF;
+      --csrd-b: #C7D2FE;
+      --cdp-bg: #ECFDF5;
+      --cdp-b: #A7F3D0;
+      --gri-bg: #FFFBEB;
+      --gri-b: #FDE68A;
+      --ifrs-bg: #EFF6FF;
+      --ifrs-b: #BFDBFE;
+    }
 
-  .slabel {
-    font-size: 10px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
-    color: var(--faint); margin-bottom: 14px;
-    display: flex; align-items: center; gap: 8px;
-  }
-  .slabel::after { content:''; flex:1; height:1px; background: var(--border); }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      padding: 0;
+      color: var(--text);
+    }
 
-  .step-connector {
-    display: flex; align-items: center; justify-content: center;
-    gap: 0; margin: 16px 0; position: relative;
-  }
-  .sc-inner { display: flex; flex-direction: column; align-items: center; gap: 0; }
-  .sc-line  { width: 2px; height: 24px; background: #CBD5E1; }
-  .sc-head  { width: 0; height: 0; border-left: 7px solid transparent; border-right: 7px solid transparent; }
-  .sc-label {
-    font-size: 10px; font-weight: 600; padding: 3px 12px;
-    border-radius: 10px; border: 1px solid; margin: 3px 0;
-    white-space: nowrap;
-  }
+    .header {
+      background: #111827;
+      color: #fff;
+      padding: 16px 36px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
 
-  .user-row { display: flex; gap: 12px; align-items: stretch; }
-  .user-card {
-    background: white; border: 1px solid var(--border); border-radius: 10px;
-    padding: 16px 20px; box-shadow: var(--shadow); flex: 1;
-  }
-  .uc-label { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); margin-bottom: 10px; }
-  .uc-picker {
-    background: #F9FAFB; border: 1.5px solid var(--canon-b); border-radius: 8px;
-    padding: 10px 14px; display: flex; align-items: center; gap: 10px;
-  }
-  .uc-picker .search-icon { color: var(--faint); font-size: 14px; }
-  .uc-picker .placeholder { font-size: 12px; color: var(--faint); }
-  .uc-list { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
-  .uc-item {
-    padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border);
-    display: flex; align-items: center; gap: 10px; cursor: default;
-    background: white; font-size: 11px;
-  }
-  .uc-item.selected { background: var(--canon-bg); border-color: var(--canon-b); }
-  .uc-item .item-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .uc-item .item-id  { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; color: var(--canon); }
-  .uc-item .item-lbl { color: var(--muted); font-size: 11px; }
-  .uc-item .item-dom { font-size: 9px; padding: 1px 5px; border-radius: 3px; background: var(--canon-bg); color: var(--canon); font-weight: 600; margin-left: auto; }
+    .h-title {
+      font-size: 14px;
+      font-weight: 600;
+    }
 
-  .tmpl-box {
-    background: var(--tmpl-bg); border: 1.5px solid var(--tmpl-b);
-    border-radius: 10px; padding: 20px 24px; box-shadow: var(--shadow);
-  }
-  .tmpl-title { font-size: 13px; font-weight: 700; color: var(--tmpl); margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
-  .tmpl-sub   { font-size: 11px; color: #7C3AED; opacity: 0.7; margin-bottom: 16px; }
-  .tmpl-icon  { width: 22px; height: 22px; background: var(--tmpl); border-radius: 5px; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; }
+    .h-sub {
+      font-size: 11px;
+      color: #9CA3AF;
+      margin-top: 2px;
+    }
 
-  .tmpl-cols { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 14px; }
-  .col-chip { border-radius: 6px; border: 1.5px solid; padding: 8px 10px; box-shadow: var(--shadow); }
-  .col-chip .cc-name { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; margin-bottom: 3px; }
-  .col-chip .cc-type { font-size: 9px; opacity: 0.7; }
-  .col-chip .cc-req  { font-size: 8px; font-weight: 700; margin-top: 4px; }
-  .col-required { background: white; border-color: var(--lock-b); }
-  .col-required .cc-name { color: var(--lock); }
-  .col-required .cc-req  { color: var(--lock); }
-  .col-optional { background: white; border-color: #E5E7EB; border-style: dashed; }
-  .col-optional .cc-name { color: var(--muted); }
-  .col-optional .cc-req  { color: var(--faint); }
+    .h-tag {
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: #1F2937;
+      color: #9CA3AF;
+      border: 1px solid #374151;
+    }
 
-  .tmpl-legend { display: flex; gap: 16px; font-size: 10px; color: var(--muted); }
-  .tl-item { display: flex; align-items: center; gap: 5px; }
-  .tl-box  { width: 12px; height: 12px; border-radius: 3px; border: 1.5px solid; }
+    .canvas {
+      padding: 36px;
+    }
 
-  .ds-box {
-    background: var(--ds-bg); border: 1.5px solid var(--ds-b);
-    border-radius: 10px; padding: 20px 24px; box-shadow: var(--shadow);
-  }
-  .ds-title { font-size: 13px; font-weight: 700; color: var(--ds); margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
-  .ds-sub   { font-size: 11px; color: #059669; opacity: 0.75; margin-bottom: 16px; }
-  .ds-icon  { width: 22px; height: 22px; background: var(--ds); border-radius: 5px; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; }
+    .board {
+      background: var(--canvas);
+      background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: 24px 24px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg);
+      padding: 40px 36px;
+    }
 
-  .ds-table { background: white; border: 1px solid var(--ds-b); border-radius: 8px; overflow: hidden; font-size: 11px; width: 100%; }
-  .ds-thead { background: #065F46; color: white; }
-  .ds-thead th { padding: 8px 12px; text-align: left; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; }
-  .ds-tbody tr { border-bottom: 1px solid #ECFDF5; }
-  .ds-tbody tr:last-child { border-bottom: none; }
-  .ds-tbody td { padding: 7px 12px; color: var(--text); }
-  .ds-tbody td.mono { font-family: 'JetBrains Mono', monospace; font-size: 10px; }
-  .ds-tbody td.muted { color: var(--muted); font-style: italic; }
-  .ds-tbody tr.input-row td { background: #F0FDF4; }
+    .slabel {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--faint);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
 
-  .ds-meta { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
-  .ds-meta-chip { font-size: 10px; padding: 3px 10px; border-radius: 4px; border: 1px solid; font-family: 'JetBrains Mono', monospace; }
+    .slabel::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
 
-  .consumers-row { display: flex; gap: 10px; }
-  .consumer-card { flex: 1; border-radius: 8px; border: 1.5px solid; padding: 12px 14px; box-shadow: var(--shadow); }
-  .cc-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-  .cc-dot    { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-  .cc-name   { font-size: 12px; font-weight: 700; }
-  .cc-code   { font-family: 'JetBrains Mono', monospace; font-size: 10px; margin-bottom: 4px; }
-  .cc-section{ font-size: 10px; color: var(--muted); }
-  .cc-badge  { font-size: 9px; padding: 1px 6px; border-radius: 3px; font-weight: 600; margin-top: 6px; display: inline-block; }
+    .step-connector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      margin: 16px 0;
+      position: relative;
+    }
 
-  .ext-card { flex: 1; border-radius: 8px; border: 1.5px dashed var(--ext-b); background: var(--ext-bg); padding: 12px 14px; }
-  .ext-card .cc-name { color: var(--ext); }
-  .ext-card .cc-section { font-size: 10px; color: var(--muted); }
+    .sc-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
 
-  .insight { background: #1E293B; color: white; border-radius: 10px; padding: 20px 24px; margin-top: 32px; }
-  .insight-title { font-size: 12px; font-weight: 700; color: #93C5FD; margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.06em; }
-  .insight-grid  { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
-  .insight-item  { padding: 14px; background: #0F172A; border-radius: 8px; border: 1px solid #334155; }
-  .ii-title { font-size: 11px; font-weight: 600; color: #E2E8F0; margin-bottom: 6px; }
-  .ii-body  { font-size: 11px; color: #94A3B8; line-height: 1.5; }
-  .ii-code  { font-family: 'JetBrains Mono', monospace; font-size: 10px; background: #1E293B; padding: 4px 8px; border-radius: 4px; margin-top: 6px; color: #7DD3FC; display: block; }
+    .sc-line {
+      width: 2px;
+      height: 24px;
+      background: #CBD5E1;
+    }
 
-  .constraint { background: #FFFBEB; border: 1.5px solid #FDE68A; border-radius: 10px; padding: 20px 24px; margin-top: 24px; }
-  .constraint-title { font-size: 12px; font-weight: 700; color: #92400E; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
-  .constraint-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .con-item { display: flex; gap: 10px; }
-  .con-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
-  .con-title { font-size: 11px; font-weight: 600; color: #92400E; margin-bottom: 3px; }
-  .con-body  { font-size: 11px; color: #78350F; line-height: 1.5; }
+    .sc-head {
+      width: 0;
+      height: 0;
+      border-left: 7px solid transparent;
+      border-right: 7px solid transparent;
+    }
 
-  .footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; font-size: 11px; color: var(--faint); }
-</style>
+    .sc-label {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 12px;
+      border-radius: 10px;
+      border: 1px solid;
+      margin: 3px 0;
+      white-space: nowrap;
+    }
+
+    .user-row {
+      display: flex;
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .user-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      box-shadow: var(--shadow);
+      flex: 1;
+    }
+
+    .uc-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--faint);
+      margin-bottom: 10px;
+    }
+
+    .uc-picker {
+      background: #F9FAFB;
+      border: 1.5px solid var(--canon-b);
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .uc-picker .search-icon {
+      color: var(--faint);
+      font-size: 14px;
+    }
+
+    .uc-picker .placeholder {
+      font-size: 12px;
+      color: var(--faint);
+    }
+
+    .uc-list {
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .uc-item {
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: default;
+      background: white;
+      font-size: 11px;
+    }
+
+    .uc-item.selected {
+      background: var(--canon-bg);
+      border-color: var(--canon-b);
+    }
+
+    .uc-item .item-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .uc-item .item-id {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--canon);
+    }
+
+    .uc-item .item-lbl {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .uc-item .item-dom {
+      font-size: 9px;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: var(--canon-bg);
+      color: var(--canon);
+      font-weight: 600;
+      margin-left: auto;
+    }
+
+    .tmpl-box {
+      background: var(--tmpl-bg);
+      border: 1.5px solid var(--tmpl-b);
+      border-radius: 10px;
+      padding: 20px 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .tmpl-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--tmpl);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tmpl-sub {
+      font-size: 11px;
+      color: #7C3AED;
+      opacity: 0.7;
+      margin-bottom: 16px;
+    }
+
+    .tmpl-icon {
+      width: 22px;
+      height: 22px;
+      background: var(--tmpl);
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 12px;
+    }
+
+    .tmpl-cols {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .col-chip {
+      border-radius: 6px;
+      border: 1.5px solid;
+      padding: 8px 10px;
+      box-shadow: var(--shadow);
+    }
+
+    .col-chip .cc-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      margin-bottom: 3px;
+    }
+
+    .col-chip .cc-type {
+      font-size: 9px;
+      opacity: 0.7;
+    }
+
+    .col-chip .cc-req {
+      font-size: 8px;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    .col-required {
+      background: white;
+      border-color: var(--lock-b);
+    }
+
+    .col-required .cc-name {
+      color: var(--lock);
+    }
+
+    .col-required .cc-req {
+      color: var(--lock);
+    }
+
+    .col-optional {
+      background: white;
+      border-color: #E5E7EB;
+      border-style: dashed;
+    }
+
+    .col-optional .cc-name {
+      color: var(--muted);
+    }
+
+    .col-optional .cc-req {
+      color: var(--faint);
+    }
+
+    .tmpl-legend {
+      display: flex;
+      gap: 16px;
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .tl-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .tl-box {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      border: 1.5px solid;
+    }
+
+    .ds-box {
+      background: var(--ds-bg);
+      border: 1.5px solid var(--ds-b);
+      border-radius: 10px;
+      padding: 20px 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .ds-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ds);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ds-sub {
+      font-size: 11px;
+      color: #059669;
+      opacity: 0.75;
+      margin-bottom: 16px;
+    }
+
+    .ds-icon {
+      width: 22px;
+      height: 22px;
+      background: var(--ds);
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 12px;
+    }
+
+    .ds-table {
+      background: white;
+      border: 1px solid var(--ds-b);
+      border-radius: 8px;
+      overflow: hidden;
+      font-size: 11px;
+      width: 100%;
+    }
+
+    .ds-thead {
+      background: #065F46;
+      color: white;
+    }
+
+    .ds-thead th {
+      padding: 8px 12px;
+      text-align: left;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    .ds-tbody tr {
+      border-bottom: 1px solid #ECFDF5;
+    }
+
+    .ds-tbody tr:last-child {
+      border-bottom: none;
+    }
+
+    .ds-tbody td {
+      padding: 7px 12px;
+      color: var(--text);
+    }
+
+    .ds-tbody td.mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+    }
+
+    .ds-tbody td.muted {
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .ds-tbody tr.input-row td {
+      background: #F0FDF4;
+    }
+
+    .ds-meta {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .ds-meta-chip {
+      font-size: 10px;
+      padding: 3px 10px;
+      border-radius: 4px;
+      border: 1px solid;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .consumers-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .consumer-card {
+      flex: 1;
+      border-radius: 8px;
+      border: 1.5px solid;
+      padding: 12px 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .cc-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .cc-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .cc-name {
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .cc-code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      margin-bottom: 4px;
+    }
+
+    .cc-section {
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .cc-badge {
+      font-size: 9px;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-weight: 600;
+      margin-top: 6px;
+      display: inline-block;
+    }
+
+    .ext-card {
+      flex: 1;
+      border-radius: 8px;
+      border: 1.5px dashed var(--ext-b);
+      background: var(--ext-bg);
+      padding: 12px 14px;
+    }
+
+    .ext-card .cc-name {
+      color: var(--ext);
+    }
+
+    .ext-card .cc-section {
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .insight {
+      background: #1E293B;
+      color: white;
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-top: 32px;
+    }
+
+    .insight-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #93C5FD;
+      margin-bottom: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .insight-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+    }
+
+    .insight-item {
+      padding: 14px;
+      background: #0F172A;
+      border-radius: 8px;
+      border: 1px solid #334155;
+    }
+
+    .ii-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #E2E8F0;
+      margin-bottom: 6px;
+    }
+
+    .ii-body {
+      font-size: 11px;
+      color: #94A3B8;
+      line-height: 1.5;
+    }
+
+    .ii-code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      background: #1E293B;
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin-top: 6px;
+      color: #7DD3FC;
+      display: block;
+    }
+
+    .constraint {
+      background: #FFFBEB;
+      border: 1.5px solid #FDE68A;
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-top: 24px;
+    }
+
+    .constraint-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #92400E;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .constraint-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .con-item {
+      display: flex;
+      gap: 10px;
+    }
+
+    .con-icon {
+      font-size: 16px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .con-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #92400E;
+      margin-bottom: 3px;
+    }
+
+    .con-body {
+      font-size: 11px;
+      color: #78350F;
+      line-height: 1.5;
+    }
+
+    .footer {
+      margin-top: 28px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--faint);
+    }
+  </style>
 </head>
+
 <body>
 
-<div class="header">
-  <div>
-    <div class="h-title">Canonical Template → DataSource — Instantiation Flow</div>
-    <div class="h-sub">How a canonical_id automatically generates a pre-configured DataSource</div>
+  <div class="header">
+    <div>
+      <div class="h-title">Canonical Template → DataSource — Instantiation Flow</div>
+      <div class="h-sub">How a canonical_id automatically generates a pre-configured DataSource</div>
+    </div>
+    <span class="h-tag">Architecture v1.0</span>
+    <a href="/index.html"><button>Home</button></a>
   </div>
-  <span class="h-tag">Architecture v1.0</span>
-</div>
 
-<div class="canvas">
-<div class="board">
+  <div class="canvas">
+    <div class="board">
 
-  <!-- ══ STEP 1 : USER CHOICE ══ -->
-  <div class="slabel">Step 1 — User selects a canonical indicator (framework-agnostic UI)</div>
-  <div class="user-row">
-    <div class="user-card" style="max-width:560px;">
-      <div class="uc-label">Select an indicator to report on</div>
-      <div class="uc-picker">
-        <span class="search-icon">⌕</span>
-        <span class="placeholder">Search for an indicator…</span>
-      </div>
-      <div class="uc-list">
-        <div class="uc-item selected">
-          <div class="item-dot" style="background:#0EA5E9;"></div>
-          <div>
-            <div class="item-id">GHG_SCOPE1_DIRECT_tCO2e</div>
-            <div class="item-lbl">Direct greenhouse gas emissions (Scope 1)</div>
+      <!-- ══ STEP 1 : USER CHOICE ══ -->
+      <div class="slabel">Step 1 — User selects a canonical indicator (framework-agnostic UI)</div>
+      <div class="user-row">
+        <div class="user-card" style="max-width:560px;">
+          <div class="uc-label">Select an indicator to report on</div>
+          <div class="uc-picker">
+            <span class="search-icon">⌕</span>
+            <span class="placeholder">Search for an indicator…</span>
           </div>
-          <div class="item-dom">E</div>
-        </div>
-        <div class="uc-item">
-          <div class="item-dot" style="background:#94A3B8;"></div>
-          <div>
-            <div class="item-id" style="color:#94A3B8;">WATER_WITHDRAWAL_TOTAL_m3</div>
-            <div class="item-lbl" style="color:#CBD5E1;">Total water withdrawal</div>
+          <div class="uc-list">
+            <div class="uc-item selected">
+              <div class="item-dot" style="background:#0EA5E9;"></div>
+              <div>
+                <div class="item-id">GHG_SCOPE1_DIRECT_tCO2e</div>
+                <div class="item-lbl">Direct greenhouse gas emissions (Scope 1)</div>
+              </div>
+              <div class="item-dom">E</div>
+            </div>
+            <div class="uc-item">
+              <div class="item-dot" style="background:#94A3B8;"></div>
+              <div>
+                <div class="item-id" style="color:#94A3B8;">WATER_WITHDRAWAL_TOTAL_m3</div>
+                <div class="item-lbl" style="color:#CBD5E1;">Total water withdrawal</div>
+              </div>
+              <div class="item-dom" style="background:#F1F5F9;color:#94A3B8;">E</div>
+            </div>
+            <div class="uc-item">
+              <div class="item-dot" style="background:#94A3B8;"></div>
+              <div>
+                <div class="item-id" style="color:#94A3B8;">WORKFORCE_HEADCOUNT_TOTAL</div>
+                <div class="item-lbl" style="color:#CBD5E1;">Total workforce headcount</div>
+              </div>
+              <div class="item-dom" style="background:#F1F5F9;color:#94A3B8;">S</div>
+            </div>
           </div>
-          <div class="item-dom" style="background:#F1F5F9;color:#94A3B8;">E</div>
         </div>
-        <div class="uc-item">
-          <div class="item-dot" style="background:#94A3B8;"></div>
-          <div>
-            <div class="item-id" style="color:#94A3B8;">WORKFORCE_HEADCOUNT_TOTAL</div>
-            <div class="item-lbl" style="color:#CBD5E1;">Total workforce headcount</div>
+        <div class="user-card" style="flex:1;">
+          <div class="uc-label">What the user does NOT see</div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:12px;">
+            No mention of CSRD, CDP, GRI, or IFRS. Labels are neutral and business-oriented.<br>
+            The list is managed by the product team — users cannot create new canonical_ids.
           </div>
-          <div class="item-dom" style="background:#F1F5F9;color:#94A3B8;">S</div>
+          <div style="background:#F9FAFB;border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
+            <div
+              style="font-size:10px;font-weight:700;color:var(--faint);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;">
+              Background (invisible to the user)</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#0369A1;line-height:1.8;">
+              canonical_id: GHG_SCOPE1_DIRECT_tCO2e<br>
+              domain: E<br>
+              template_id: tmpl_ghg_scope1_v1<br>
+              frameworks: [CSRD, CDP, GRI, IFRS_S2, TCFD]
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="user-card" style="flex:1;">
-      <div class="uc-label">What the user does NOT see</div>
-      <div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:12px;">
-        No mention of CSRD, CDP, GRI, or IFRS. Labels are neutral and business-oriented.<br>
-        The list is managed by the product team — users cannot create new canonical_ids.
-      </div>
-      <div style="background:#F9FAFB;border:1px solid var(--border);border-radius:6px;padding:10px 12px;">
-        <div style="font-size:10px;font-weight:700;color:var(--faint);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;">Background (invisible to the user)</div>
-        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#0369A1;line-height:1.8;">
-          canonical_id: GHG_SCOPE1_DIRECT_tCO2e<br>
-          domain: E<br>
-          template_id: tmpl_ghg_scope1_v1<br>
-          frameworks: [CSRD, CDP, GRI, IFRS_S2, TCFD]
+
+      <!-- CONNECTOR -->
+      <div class="step-connector">
+        <div class="sc-inner">
+          <div class="sc-line"></div>
+          <div class="sc-label" style="background:var(--tmpl-bg);color:var(--tmpl);border-color:var(--tmpl-b);">
+            instantiates template</div>
+          <div class="sc-line"></div>
+          <div class="sc-head" style="border-top-color:var(--tmpl);"></div>
         </div>
       </div>
-    </div>
-  </div>
 
-  <!-- CONNECTOR -->
-  <div class="step-connector">
-    <div class="sc-inner">
-      <div class="sc-line"></div>
-      <div class="sc-label" style="background:var(--tmpl-bg);color:var(--tmpl);border-color:var(--tmpl-b);">instantiates template</div>
-      <div class="sc-line"></div>
-      <div class="sc-head" style="border-top-color:var(--tmpl);"></div>
-    </div>
-  </div>
+      <!-- ══ STEP 2 : TEMPLATE ══ -->
+      <div class="slabel">Step 2 — System instantiates the pre-configured template (managed by the product team)</div>
+      <div class="tmpl-box">
+        <div class="tmpl-title">
+          <div class="tmpl-icon">⊟</div>
+          canonical_ds_template
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:400;opacity:0.6;">id:
+            tmpl_ghg_scope1_v1</span>
+        </div>
+        <div class="tmpl-sub">Locked column structure · Managed by the product team · Versioned</div>
 
-  <!-- ══ STEP 2 : TEMPLATE ══ -->
-  <div class="slabel">Step 2 — System instantiates the pre-configured template (managed by the product team)</div>
-  <div class="tmpl-box">
-    <div class="tmpl-title">
-      <div class="tmpl-icon">⊟</div>
-      canonical_ds_template
-      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:400;opacity:0.6;">id: tmpl_ghg_scope1_v1</span>
-    </div>
-    <div class="tmpl-sub">Locked column structure · Managed by the product team · Versioned</div>
+        <div class="tmpl-cols">
+          <!-- Required columns -->
+          <div class="col-chip col-required">
+            <div class="cc-name">reporting_year</div>
+            <div class="cc-type">Date (YYYY)</div>
+            <div class="cc-req">⬤ REQUIRED</div>
+          </div>
+          <div class="col-chip col-required">
+            <div class="cc-name">facility_id</div>
+            <div class="cc-type">List → Facility</div>
+            <div class="cc-req">⬤ REQUIRED</div>
+          </div>
+          <div class="col-chip col-required">
+            <div class="cc-name">value_tco2e</div>
+            <div class="cc-type">Number (tCO₂e)</div>
+            <div class="cc-req">⬤ REQUIRED</div>
+          </div>
+          <div class="col-chip col-required">
+            <div class="cc-name">methodology</div>
+            <div class="cc-type">Select (enum)</div>
+            <div class="cc-req">⬤ REQUIRED</div>
+          </div>
+          <div class="col-chip col-required">
+            <div class="cc-name">data_source_ref</div>
+            <div class="cc-type">Text</div>
+            <div class="cc-req">⬤ REQUIRED</div>
+          </div>
+          <!-- Optional columns -->
+          <div class="col-chip col-optional">
+            <div class="cc-name">gas_type</div>
+            <div class="cc-type">Select (CO₂/CH₄…)</div>
+            <div class="cc-req">○ OPTIONAL</div>
+          </div>
+          <div class="col-chip col-optional">
+            <div class="cc-name">activity_type</div>
+            <div class="cc-type">Text</div>
+            <div class="cc-req">○ OPTIONAL</div>
+          </div>
+          <div class="col-chip col-optional">
+            <div class="cc-name">biogenic_co2</div>
+            <div class="cc-type">Number (tCO₂e)</div>
+            <div class="cc-req">○ OPTIONAL</div>
+          </div>
+          <div class="col-chip col-optional">
+            <div class="cc-name">uncertainty_pct</div>
+            <div class="cc-type">Number (%)</div>
+            <div class="cc-req">○ OPTIONAL</div>
+          </div>
+          <div class="col-chip col-optional">
+            <div class="cc-name">notes</div>
+            <div class="cc-type">Text</div>
+            <div class="cc-req">○ OPTIONAL</div>
+          </div>
+        </div>
 
-    <div class="tmpl-cols">
-      <!-- Required columns -->
-      <div class="col-chip col-required">
-        <div class="cc-name">reporting_year</div>
-        <div class="cc-type">Date (YYYY)</div>
-        <div class="cc-req">⬤ REQUIRED</div>
-      </div>
-      <div class="col-chip col-required">
-        <div class="cc-name">facility_id</div>
-        <div class="cc-type">List → Facility</div>
-        <div class="cc-req">⬤ REQUIRED</div>
-      </div>
-      <div class="col-chip col-required">
-        <div class="cc-name">value_tco2e</div>
-        <div class="cc-type">Number (tCO₂e)</div>
-        <div class="cc-req">⬤ REQUIRED</div>
-      </div>
-      <div class="col-chip col-required">
-        <div class="cc-name">methodology</div>
-        <div class="cc-type">Select (enum)</div>
-        <div class="cc-req">⬤ REQUIRED</div>
-      </div>
-      <div class="col-chip col-required">
-        <div class="cc-name">data_source_ref</div>
-        <div class="cc-type">Text</div>
-        <div class="cc-req">⬤ REQUIRED</div>
-      </div>
-      <!-- Optional columns -->
-      <div class="col-chip col-optional">
-        <div class="cc-name">gas_type</div>
-        <div class="cc-type">Select (CO₂/CH₄…)</div>
-        <div class="cc-req">○ OPTIONAL</div>
-      </div>
-      <div class="col-chip col-optional">
-        <div class="cc-name">activity_type</div>
-        <div class="cc-type">Text</div>
-        <div class="cc-req">○ OPTIONAL</div>
-      </div>
-      <div class="col-chip col-optional">
-        <div class="cc-name">biogenic_co2</div>
-        <div class="cc-type">Number (tCO₂e)</div>
-        <div class="cc-req">○ OPTIONAL</div>
-      </div>
-      <div class="col-chip col-optional">
-        <div class="cc-name">uncertainty_pct</div>
-        <div class="cc-type">Number (%)</div>
-        <div class="cc-req">○ OPTIONAL</div>
-      </div>
-      <div class="col-chip col-optional">
-        <div class="cc-name">notes</div>
-        <div class="cc-type">Text</div>
-        <div class="cc-req">○ OPTIONAL</div>
-      </div>
-    </div>
-
-    <div class="tmpl-legend">
-      <div class="tl-item">
-        <div class="tl-box" style="background:white;border-color:var(--lock-b);"></div>
-        Required columns — mandatory for framework compliance
-      </div>
-      <div class="tl-item">
-        <div class="tl-box" style="background:white;border-color:#E5E7EB;border-style:dashed;"></div>
-        Optional columns — add granularity without blocking data entry
-      </div>
-      <div style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);">
-        template_version: v1 · created_by: product_team · locked: true
-      </div>
-    </div>
-  </div>
-
-  <!-- CONNECTOR -->
-  <div class="step-connector">
-    <div class="sc-inner">
-      <div class="sc-line"></div>
-      <div class="sc-label" style="background:var(--ds-bg);color:var(--ds);border-color:var(--ds-b);">generates the DataSource</div>
-      <div class="sc-line"></div>
-      <div class="sc-head" style="border-top-color:var(--ds);"></div>
-    </div>
-  </div>
-
-  <!-- ══ STEP 3 : DATASOURCE ══ -->
-  <div class="slabel">Step 3 — DataSource is created and user enters their data</div>
-  <div class="ds-box">
-    <div class="ds-title">
-      <div class="ds-icon">⊞</div>
-      Generated DataSource
-      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:400;opacity:0.6;">ds_id: ds_a3f9… · org: Acme Corp</span>
-    </div>
-    <div class="ds-sub">Structure inherited from template · Locked — schema cannot be modified · User fills in data rows only</div>
-
-    <table class="ds-table">
-      <thead class="ds-thead">
-        <tr>
-          <th>reporting_year</th>
-          <th>facility_id</th>
-          <th>value_tco2e</th>
-          <th>methodology</th>
-          <th>data_source_ref</th>
-          <th>gas_type</th>
-          <th>notes</th>
-        </tr>
-      </thead>
-      <tbody class="ds-tbody">
-        <tr>
-          <td class="mono">2024</td>
-          <td class="mono">FAC-001 · London HQ</td>
-          <td class="mono">1,842.5</td>
-          <td class="mono">GHG Protocol</td>
-          <td class="mono">Gas invoices Q1–Q4</td>
-          <td class="mono">CO₂</td>
-          <td class="muted">—</td>
-        </tr>
-        <tr>
-          <td class="mono">2024</td>
-          <td class="mono">FAC-002 · Manchester</td>
-          <td class="mono">634.2</td>
-          <td class="mono">GHG Protocol</td>
-          <td class="mono">Gas invoices Q1–Q4</td>
-          <td class="muted">—</td>
-          <td class="muted">—</td>
-        </tr>
-        <tr class="input-row">
-          <td class="muted" colspan="7" style="text-align:center;font-style:italic;color:#059669;">+ Add a row…</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <div class="ds-meta">
-      <span class="ds-meta-chip" style="background:var(--canon-bg);border-color:var(--canon-b);color:var(--canon);">canonical_id: GHG_SCOPE1_DIRECT_tCO2e</span>
-      <span class="ds-meta-chip" style="background:var(--tmpl-bg);border-color:var(--tmpl-b);color:var(--tmpl);">template: tmpl_ghg_scope1_v1</span>
-      <span class="ds-meta-chip" style="background:#F0FDF4;border-color:#A7F3D0;color:#065F46;">status: active</span>
-      <span class="ds-meta-chip" style="background:#F9FAFB;border-color:var(--border);color:var(--muted);">rows: 2 · completeness: 80%</span>
-    </div>
-  </div>
-
-  <!-- CONNECTOR -->
-  <div class="step-connector">
-    <div class="sc-inner">
-      <div class="sc-line"></div>
-      <div class="sc-label" style="background:#F9FAFB;color:var(--muted);border-color:var(--border);">mapping_table.canonical_id JOIN → framework_renderer</div>
-      <div class="sc-line"></div>
-      <div class="sc-head" style="border-top-color:#6B7280;"></div>
-    </div>
-  </div>
-
-  <!-- ══ STEP 4 : CONSUMERS ══ -->
-  <div class="slabel">Step 4 — The same DataSource feeds all consumers simultaneously</div>
-  <div class="consumers-row">
-    <div class="consumer-card" style="background:var(--csrd-bg);border-color:var(--csrd-b);">
-      <div class="cc-header">
-        <div class="cc-dot" style="background:#6366F1;"></div>
-        <div class="cc-name" style="color:#4338CA;">CSRD</div>
-      </div>
-      <div class="cc-code" style="color:#4338CA;">ESRS E1-6, DR E1-6-a</div>
-      <div class="cc-section">Gross Scope 1 GHG emissions</div>
-      <span class="cc-badge" style="background:#EEF2FF;color:#4338CA;border:1px solid #C7D2FE;">✓ Mandatory</span>
-    </div>
-    <div class="consumer-card" style="background:var(--cdp-bg);border-color:var(--cdp-b);">
-      <div class="cc-header">
-        <div class="cc-dot" style="background:#10B981;"></div>
-        <div class="cc-name" style="color:#065F46;">CDP</div>
-      </div>
-      <div class="cc-code" style="color:#065F46;">C6.1</div>
-      <div class="cc-section">Gross global Scope 1 emissions</div>
-      <span class="cc-badge" style="background:#ECFDF5;color:#065F46;border:1px solid #A7F3D0;">✓ Mandatory</span>
-    </div>
-    <div class="consumer-card" style="background:var(--gri-bg);border-color:var(--gri-b);">
-      <div class="cc-header">
-        <div class="cc-dot" style="background:#F59E0B;"></div>
-        <div class="cc-name" style="color:#92400E;">GRI</div>
-      </div>
-      <div class="cc-code" style="color:#92400E;">GRI 305-1</div>
-      <div class="cc-section">Direct (Scope 1) GHG emissions</div>
-      <span class="cc-badge" style="background:#FFFBEB;color:#92400E;border:1px solid #FDE68A;">~ If material</span>
-    </div>
-    <div class="consumer-card" style="background:var(--ifrs-bg);border-color:var(--ifrs-b);">
-      <div class="cc-header">
-        <div class="cc-dot" style="background:#3B82F6;"></div>
-        <div class="cc-name" style="color:#1D4ED8;">IFRS S2</div>
-      </div>
-      <div class="cc-code" style="color:#1D4ED8;">S2.29(a)</div>
-      <div class="cc-section">Scope 1 greenhouse gas emissions</div>
-      <span class="cc-badge" style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;">✓ Mandatory</span>
-    </div>
-    <div class="consumer-card" style="background:var(--tmpl-bg);border-color:var(--tmpl-b);">
-      <div class="cc-header">
-        <div class="cc-dot" style="background:#8B5CF6;"></div>
-        <div class="cc-name" style="color:#5B21B6;">TCFD</div>
-      </div>
-      <div class="cc-code" style="color:#5B21B6;">Metrics C</div>
-      <div class="cc-section">Scope 1 GHG emissions</div>
-      <span class="cc-badge" style="background:#F5F3FF;color:#5B21B6;border:1px solid #DDD6FE;">Recommended</span>
-    </div>
-    <div class="ext-card">
-      <div class="cc-header">
-        <div class="cc-dot" style="background:#6366F1;"></div>
-        <div class="cc-name">Outside Frameworks</div>
-      </div>
-      <div class="cc-section" style="font-size:11px;color:var(--muted);line-height:1.5;margin-top:4px;">
-        Internal dashboard · Cross-site benchmarking · External API · Excel export · Ad hoc investor reporting
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ KEY INSIGHTS ══ -->
-  <div class="insight">
-    <div class="insight-title">Key implementation points</div>
-    <div class="insight-grid">
-      <div class="insight-item">
-        <div class="ii-title">The template is the keystone</div>
-        <div class="ii-body">It bridges the abstract canonical model and the concrete DataSource. It encodes the columns required to satisfy all mapped frameworks. Versioned for backward compatibility.</div>
-        <code class="ii-code">canonical_id → template_id → DS_schema</code>
-      </div>
-      <div class="insight-item">
-        <div class="ii-title">Existing DataSource module stays unchanged</div>
-        <div class="ii-body">The DataSource module receives a schema_definition object generated by the template — exactly as if a user had manually configured the columns. Zero refactoring of the existing module.</div>
-        <code class="ii-code">template.to_schema() → DS.create(schema)</code>
-      </div>
-      <div class="insight-item">
-        <div class="ii-title">canonical_id as DataSource metadata</div>
-        <div class="ii-body">The created DataSource stores its canonical_id and template_id as metadata. This link allows the framework_renderer to know how to interpret and map columns to each framework.</div>
-        <code class="ii-code">DS.metadata.canonical_id = "GHG_SCOPE1…"</code>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ OPEN QUESTIONS ══ -->
-  <div class="constraint">
-    <div class="constraint-title">⚠ Design decisions to validate with leads</div>
-    <div class="constraint-grid">
-      <div class="con-item">
-        <div class="con-icon">🔒</div>
-        <div>
-          <div class="con-title">Locked template — what if a user needs a custom column?</div>
-          <div class="con-body">Option A: Generic "notes" column for anything outside the template.<br>Option B: "Custom columns" section alongside template columns — not mapped to frameworks.<br>Option C: Template stays strictly locked, no exceptions.</div>
+        <div class="tmpl-legend">
+          <div class="tl-item">
+            <div class="tl-box" style="background:white;border-color:var(--lock-b);"></div>
+            Required columns — mandatory for framework compliance
+          </div>
+          <div class="tl-item">
+            <div class="tl-box" style="background:white;border-color:#E5E7EB;border-style:dashed;"></div>
+            Optional columns — add granularity without blocking data entry
+          </div>
+          <div style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint);">
+            template_version: v1 · created_by: product_team · locked: true
+          </div>
         </div>
       </div>
-      <div class="con-item">
-        <div class="con-icon">🔄</div>
-        <div>
-          <div class="con-title">Can an existing DataSource be retroactively linked to a canonical_id?</div>
-          <div class="con-body">If an org already has manually created DataSources, do we need a migration workflow to attach them to a canonical_id? Or do we let free-form DSs and canonical DSs coexist?</div>
+
+      <!-- CONNECTOR -->
+      <div class="step-connector">
+        <div class="sc-inner">
+          <div class="sc-line"></div>
+          <div class="sc-label" style="background:var(--ds-bg);color:var(--ds);border-color:var(--ds-b);">generates the
+            DataSource</div>
+          <div class="sc-line"></div>
+          <div class="sc-head" style="border-top-color:var(--ds);"></div>
         </div>
       </div>
-      <div class="con-item">
-        <div class="con-icon">📦</div>
-        <div>
-          <div class="con-title">Can one canonical_id generate multiple DSs (multi-scope)?</div>
-          <div class="con-body">E.g. Scope 1 by facility in one DS, Scope 1 aggregated at group level in another. Same canonical_id — but different granularities. How do we handle aggregation at render time?</div>
+
+      <!-- ══ STEP 3 : DATASOURCE ══ -->
+      <div class="slabel">Step 3 — DataSource is created and user enters their data</div>
+      <div class="ds-box">
+        <div class="ds-title">
+          <div class="ds-icon">⊞</div>
+          Generated DataSource
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:400;opacity:0.6;">ds_id:
+            ds_a3f9… · org: Acme Corp</span>
+        </div>
+        <div class="ds-sub">Structure inherited from template · Locked — schema cannot be modified · User fills in data
+          rows only</div>
+
+        <table class="ds-table">
+          <thead class="ds-thead">
+            <tr>
+              <th>reporting_year</th>
+              <th>facility_id</th>
+              <th>value_tco2e</th>
+              <th>methodology</th>
+              <th>data_source_ref</th>
+              <th>gas_type</th>
+              <th>notes</th>
+            </tr>
+          </thead>
+          <tbody class="ds-tbody">
+            <tr>
+              <td class="mono">2024</td>
+              <td class="mono">FAC-001 · London HQ</td>
+              <td class="mono">1,842.5</td>
+              <td class="mono">GHG Protocol</td>
+              <td class="mono">Gas invoices Q1–Q4</td>
+              <td class="mono">CO₂</td>
+              <td class="muted">—</td>
+            </tr>
+            <tr>
+              <td class="mono">2024</td>
+              <td class="mono">FAC-002 · Manchester</td>
+              <td class="mono">634.2</td>
+              <td class="mono">GHG Protocol</td>
+              <td class="mono">Gas invoices Q1–Q4</td>
+              <td class="muted">—</td>
+              <td class="muted">—</td>
+            </tr>
+            <tr class="input-row">
+              <td class="muted" colspan="7" style="text-align:center;font-style:italic;color:#059669;">+ Add a row…</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="ds-meta">
+          <span class="ds-meta-chip"
+            style="background:var(--canon-bg);border-color:var(--canon-b);color:var(--canon);">canonical_id:
+            GHG_SCOPE1_DIRECT_tCO2e</span>
+          <span class="ds-meta-chip"
+            style="background:var(--tmpl-bg);border-color:var(--tmpl-b);color:var(--tmpl);">template:
+            tmpl_ghg_scope1_v1</span>
+          <span class="ds-meta-chip" style="background:#F0FDF4;border-color:#A7F3D0;color:#065F46;">status:
+            active</span>
+          <span class="ds-meta-chip" style="background:#F9FAFB;border-color:var(--border);color:var(--muted);">rows: 2 ·
+            completeness: 80%</span>
         </div>
       </div>
-      <div class="con-item">
-        <div class="con-icon">🔢</div>
-        <div>
-          <div class="con-title">Template versioning over time</div>
-          <div class="con-body">If CSRD adds a new requirement in 2026 and template v1 is updated to v2, do DSs created on v1 remain valid? Do we need a data migration mechanism or inter-version comparison?</div>
+
+      <!-- CONNECTOR -->
+      <div class="step-connector">
+        <div class="sc-inner">
+          <div class="sc-line"></div>
+          <div class="sc-label" style="background:#F9FAFB;color:var(--muted);border-color:var(--border);">
+            mapping_table.canonical_id JOIN → framework_renderer</div>
+          <div class="sc-line"></div>
+          <div class="sc-head" style="border-top-color:#6B7280;"></div>
         </div>
       </div>
+
+      <!-- ══ STEP 4 : CONSUMERS ══ -->
+      <div class="slabel">Step 4 — The same DataSource feeds all consumers simultaneously</div>
+      <div class="consumers-row">
+        <div class="consumer-card" style="background:var(--csrd-bg);border-color:var(--csrd-b);">
+          <div class="cc-header">
+            <div class="cc-dot" style="background:#6366F1;"></div>
+            <div class="cc-name" style="color:#4338CA;">CSRD</div>
+          </div>
+          <div class="cc-code" style="color:#4338CA;">ESRS E1-6, DR E1-6-a</div>
+          <div class="cc-section">Gross Scope 1 GHG emissions</div>
+          <span class="cc-badge" style="background:#EEF2FF;color:#4338CA;border:1px solid #C7D2FE;">✓ Mandatory</span>
+        </div>
+        <div class="consumer-card" style="background:var(--cdp-bg);border-color:var(--cdp-b);">
+          <div class="cc-header">
+            <div class="cc-dot" style="background:#10B981;"></div>
+            <div class="cc-name" style="color:#065F46;">CDP</div>
+          </div>
+          <div class="cc-code" style="color:#065F46;">C6.1</div>
+          <div class="cc-section">Gross global Scope 1 emissions</div>
+          <span class="cc-badge" style="background:#ECFDF5;color:#065F46;border:1px solid #A7F3D0;">✓ Mandatory</span>
+        </div>
+        <div class="consumer-card" style="background:var(--gri-bg);border-color:var(--gri-b);">
+          <div class="cc-header">
+            <div class="cc-dot" style="background:#F59E0B;"></div>
+            <div class="cc-name" style="color:#92400E;">GRI</div>
+          </div>
+          <div class="cc-code" style="color:#92400E;">GRI 305-1</div>
+          <div class="cc-section">Direct (Scope 1) GHG emissions</div>
+          <span class="cc-badge" style="background:#FFFBEB;color:#92400E;border:1px solid #FDE68A;">~ If material</span>
+        </div>
+        <div class="consumer-card" style="background:var(--ifrs-bg);border-color:var(--ifrs-b);">
+          <div class="cc-header">
+            <div class="cc-dot" style="background:#3B82F6;"></div>
+            <div class="cc-name" style="color:#1D4ED8;">IFRS S2</div>
+          </div>
+          <div class="cc-code" style="color:#1D4ED8;">S2.29(a)</div>
+          <div class="cc-section">Scope 1 greenhouse gas emissions</div>
+          <span class="cc-badge" style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;">✓ Mandatory</span>
+        </div>
+        <div class="consumer-card" style="background:var(--tmpl-bg);border-color:var(--tmpl-b);">
+          <div class="cc-header">
+            <div class="cc-dot" style="background:#8B5CF6;"></div>
+            <div class="cc-name" style="color:#5B21B6;">TCFD</div>
+          </div>
+          <div class="cc-code" style="color:#5B21B6;">Metrics C</div>
+          <div class="cc-section">Scope 1 GHG emissions</div>
+          <span class="cc-badge" style="background:#F5F3FF;color:#5B21B6;border:1px solid #DDD6FE;">Recommended</span>
+        </div>
+        <div class="ext-card">
+          <div class="cc-header">
+            <div class="cc-dot" style="background:#6366F1;"></div>
+            <div class="cc-name">Outside Frameworks</div>
+          </div>
+          <div class="cc-section" style="font-size:11px;color:var(--muted);line-height:1.5;margin-top:4px;">
+            Internal dashboard · Cross-site benchmarking · External API · Excel export · Ad hoc investor reporting
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ KEY INSIGHTS ══ -->
+      <div class="insight">
+        <div class="insight-title">Key implementation points</div>
+        <div class="insight-grid">
+          <div class="insight-item">
+            <div class="ii-title">The template is the keystone</div>
+            <div class="ii-body">It bridges the abstract canonical model and the concrete DataSource. It encodes the
+              columns required to satisfy all mapped frameworks. Versioned for backward compatibility.</div>
+            <code class="ii-code">canonical_id → template_id → DS_schema</code>
+          </div>
+          <div class="insight-item">
+            <div class="ii-title">Existing DataSource module stays unchanged</div>
+            <div class="ii-body">The DataSource module receives a schema_definition object generated by the template —
+              exactly as if a user had manually configured the columns. Zero refactoring of the existing module.</div>
+            <code class="ii-code">template.to_schema() → DS.create(schema)</code>
+          </div>
+          <div class="insight-item">
+            <div class="ii-title">canonical_id as DataSource metadata</div>
+            <div class="ii-body">The created DataSource stores its canonical_id and template_id as metadata. This link
+              allows the framework_renderer to know how to interpret and map columns to each framework.</div>
+            <code class="ii-code">DS.metadata.canonical_id = "GHG_SCOPE1…"</code>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ OPEN QUESTIONS ══ -->
+      <div class="constraint">
+        <div class="constraint-title">⚠ Design decisions to validate with leads</div>
+        <div class="constraint-grid">
+          <div class="con-item">
+            <div class="con-icon">🔒</div>
+            <div>
+              <div class="con-title">Locked template — what if a user needs a custom column?</div>
+              <div class="con-body">Option A: Generic "notes" column for anything outside the template.<br>Option B:
+                "Custom columns" section alongside template columns — not mapped to frameworks.<br>Option C: Template
+                stays strictly locked, no exceptions.</div>
+            </div>
+          </div>
+          <div class="con-item">
+            <div class="con-icon">🔄</div>
+            <div>
+              <div class="con-title">Can an existing DataSource be retroactively linked to a canonical_id?</div>
+              <div class="con-body">If an org already has manually created DataSources, do we need a migration workflow
+                to attach them to a canonical_id? Or do we let free-form DSs and canonical DSs coexist?</div>
+            </div>
+          </div>
+          <div class="con-item">
+            <div class="con-icon">📦</div>
+            <div>
+              <div class="con-title">Can one canonical_id generate multiple DSs (multi-scope)?</div>
+              <div class="con-body">E.g. Scope 1 by facility in one DS, Scope 1 aggregated at group level in another.
+                Same canonical_id — but different granularities. How do we handle aggregation at render time?</div>
+            </div>
+          </div>
+          <div class="con-item">
+            <div class="con-icon">🔢</div>
+            <div>
+              <div class="con-title">Template versioning over time</div>
+              <div class="con-body">If CSRD adds a new requirement in 2026 and template v1 is updated to v2, do DSs
+                created on v1 remain valid? Do we need a data migration mechanism or inter-version comparison?</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <span>ESG Canonical Template → DataSource · Architecture v1.0</span>
+        <span>Instantiation Flow · Confidential</span>
+        <span>To be validated with Backend Lead, Frontend Lead &amp; PM</span>
+      </div>
+
     </div>
   </div>
-
-  <div class="footer">
-    <span>ESG Canonical Template → DataSource · Architecture v1.0</span>
-    <span>Instantiation Flow · Confidential</span>
-    <span>To be validated with Backend Lead, Frontend Lead &amp; PM</span>
-  </div>
-
-</div>
-</div>
 </body>
+
 </html>
