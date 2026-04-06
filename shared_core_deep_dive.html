@@ -1,0 +1,2217 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Shared Core Canonical IDs — Deep Dive</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #F8F9FA;
+            --paper: #ffffff;
+            --ink: #1C1F2A;
+            --ink2: #4B5263;
+            --ink3: #8B92A5;
+            --border: #E2E4EA;
+            --border2: #F0F1F5;
+
+            --e: #059669;
+            --e-bg: #ECFDF5;
+            --e-b: #A7F3D0;
+            --s: #7C3AED;
+            --s-bg: #F5F3FF;
+            --s-b: #DDD6FE;
+            --g: #D97706;
+            --g-bg: #FFFBEB;
+            --g-b: #FDE68A;
+            --x: #0891B2;
+            --x-bg: #ECFEFF;
+            --x-b: #A5F3FC;
+
+            --csrd: #6366F1;
+            --cdp: #10B981;
+            --gri: #F59E0B;
+            --ifrs: #3B82F6;
+            --tcfd: #8B5CF6;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--ink);
+        }
+
+        .header {
+            background: #1C1F2A;
+            color: white;
+            padding: 20px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .h-left {}
+
+        .h-title {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .h-sub {
+            font-size: 12px;
+            color: #9CA3AF;
+            margin-top: 3px;
+        }
+
+        .h-right {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .h-stat {
+            text-align: center;
+            padding: 6px 16px;
+            background: #2D3748;
+            border-radius: 8px;
+            border: 1px solid #4B5563;
+        }
+
+        .h-stat-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .h-stat-label {
+            font-size: 9px;
+            color: #9CA3AF;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-top: 1px;
+        }
+
+        .page {
+            padding: 32px 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+        }
+
+        .section-label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.10em;
+            text-transform: uppercase;
+            color: var(--ink3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .section-label .sl-count {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 1px 8px;
+            border-radius: 10px;
+            border: 1px solid;
+        }
+
+        /* ── INTRO BANNER ── */
+        .intro {
+            background: var(--paper);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 24px 28px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 32px;
+            align-items: center;
+        }
+
+        .intro-text {
+            font-size: 13px;
+            color: var(--ink2);
+            line-height: 1.7;
+        }
+
+        .intro-text strong {
+            color: var(--ink);
+        }
+
+        .fw-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 180px;
+        }
+
+        .fl-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: var(--ink2);
+        }
+
+        .fl-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* ── TABLE ── */
+        .data-table {
+            background: var(--paper);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+
+        .group-header {
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .gh-domain {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 20px;
+            letter-spacing: 0.04em;
+        }
+
+        .gh-title {
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .gh-count {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--ink3);
+            margin-left: auto;
+        }
+
+        .gh-desc {
+            font-size: 11px;
+            color: var(--ink3);
+            margin-left: 4px;
+        }
+
+        .table-head {
+            display: grid;
+            grid-template-columns: 260px 200px 80px 80px 1fr 100px;
+            padding: 8px 20px;
+            gap: 12px;
+            background: #F4F5F8;
+            border-bottom: 1px solid var(--border);
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--ink3);
+        }
+
+        .table-row {
+            display: grid;
+            grid-template-columns: 260px 200px 80px 80px 1fr 100px;
+            padding: 10px 20px;
+            gap: 12px;
+            border-bottom: 1px solid var(--border2);
+            align-items: center;
+            font-size: 11px;
+        }
+
+        .table-row:last-child {
+            border-bottom: none;
+        }
+
+        .table-row:hover {
+            background: #FAFBFF;
+        }
+
+        .tr-slug {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--x);
+            line-height: 1.4;
+            word-break: break-all;
+        }
+
+        .tr-label {
+            color: var(--ink2);
+            line-height: 1.4;
+        }
+
+        .tr-type {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            color: var(--ink3);
+            text-align: center;
+        }
+
+        .tr-unit {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            color: var(--ink3);
+            text-align: center;
+        }
+
+        .tr-fw {
+            display: flex;
+            gap: 3px;
+            flex-wrap: wrap;
+        }
+
+        .fw-pip {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            title: '';
+        }
+
+        .fw-pip-full {
+            opacity: 1;
+        }
+
+        .fw-pip-part {
+            opacity: 0.35;
+        }
+
+        .tr-notes {
+            font-size: 10px;
+            color: var(--ink3);
+            line-height: 1.4;
+            font-style: italic;
+        }
+
+        /* Sub-group divider */
+        .sub-group {
+            padding: 6px 20px;
+            background: var(--bg);
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink3);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border2);
+            border-top: 1px solid var(--border2);
+        }
+
+        /* ── SUMMARY GRID ── */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        .sum-card {
+            background: var(--paper);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px;
+        }
+
+        .sum-domain {
+            font-size: 11px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .sum-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .sum-label {
+            font-size: 11px;
+            color: var(--ink3);
+            margin-bottom: 12px;
+        }
+
+        .sum-bar {
+            height: 4px;
+            border-radius: 2px;
+            margin-bottom: 10px;
+        }
+
+        .sum-items {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            font-size: 10px;
+            color: var(--ink3);
+        }
+
+        .sum-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+            border-bottom: 1px solid var(--border2);
+        }
+
+        .sum-item:last-child {
+            border-bottom: none;
+        }
+
+        /* ── FRAMEWORK COVERAGE ROW ── */
+        .coverage-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .cov-card {
+            flex: 1;
+            background: var(--paper);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .cov-fw {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .cov-desc {
+            font-size: 11px;
+            color: var(--ink3);
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+
+        .cov-bar-wrap {
+            margin-bottom: 4px;
+        }
+
+        .cov-bar-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            margin-bottom: 3px;
+            color: var(--ink3);
+        }
+
+        .cov-bar-bg {
+            height: 6px;
+            background: var(--border2);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .cov-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+        }
+
+        .footer {
+            padding: 16px 40px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--ink3);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <div class="h-left">
+            <div class="h-title">Shared Core Canonical IDs — Deep Dive</div>
+            <div class="h-sub">Every ID that feeds 2+ frameworks simultaneously · The MVP build list</div>
+        </div>
+        <div class="h-right">
+            <div class="h-stat">
+                <div class="h-stat-num" style="color:#A5F3FC;">120</div>
+                <div class="h-stat-label">Core IDs</div>
+            </div>
+            <div class="h-stat">
+                <div class="h-stat-num" style="color:#6EE7B7;">65</div>
+                <div class="h-stat-label">Environment</div>
+            </div>
+            <div class="h-stat">
+                <div class="h-stat-num" style="color:#C4B5FD;">35</div>
+                <div class="h-stat-label">Social</div>
+            </div>
+            <div class="h-stat">
+                <div class="h-stat-num" style="color:#FDE68A;">20</div>
+                <div class="h-stat-label">Gov + Cross</div>
+            </div>
+            <a href="/DIS-DATA-ENTRY/"><button>Home</button></a>
+        </div>
+
+    </div>
+
+    <div class="page">
+
+        <!-- INTRO -->
+        <div class="intro">
+            <div class="intro-text">
+                These <strong>~120 canonical IDs</strong> are shared across at least two frameworks — most appear in all
+                five. They represent the <strong>minimum viable data collection</strong> for a multi-framework ESG SaaS.
+                A user who fills these in will automatically have 75–85% of any single framework's quantitative
+                requirements satisfied.<br><br>
+                Framework coverage dots: <strong>filled = mandatory or standard</strong> · <strong>faded = conditional /
+                    if material</strong>. Note that <strong>TCFD is omitted</strong> as a separate column — its data
+                points are fully covered by CSRD E1 and IFRS S2, adding zero net-new canonical IDs.
+            </div>
+            <div class="fw-legend">
+                <div
+                    style="font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">
+                    Framework legend</div>
+                <div class="fl-item">
+                    <div class="fl-dot" style="background:var(--csrd);"></div>CSRD / ESRS
+                </div>
+                <div class="fl-item">
+                    <div class="fl-dot" style="background:var(--cdp);"></div>CDP
+                </div>
+                <div class="fl-item">
+                    <div class="fl-dot" style="background:var(--gri);"></div>GRI
+                </div>
+                <div class="fl-item">
+                    <div class="fl-dot" style="background:var(--ifrs);"></div>IFRS S2
+                </div>
+                <div class="fl-item" style="margin-top:8px;font-size:10px;color:var(--ink3);">● full coverage
+                    &nbsp;·&nbsp; ◌ conditional</div>
+            </div>
+        </div>
+
+        <!-- ══ ENVIRONMENT ══ -->
+        <div>
+            <div class="section-label">
+                <span class="sl-count" style="color:var(--e);border-color:var(--e-b);background:var(--e-bg);">E · 65
+                    IDs</span>
+                Environment — GHG, Energy, Water, Waste, Climate Risk
+            </div>
+
+            <div class="data-table">
+                <div class="group-header" style="background:var(--e-bg);">
+                    <span class="gh-domain" style="background:var(--e-b);color:var(--e);">GHG Emissions</span>
+                    <span class="gh-title">Greenhouse Gas — Scope 1</span>
+                    <span class="gh-count">8 IDs</span>
+                </div>
+                <div class="table-head">
+                    <span>Canonical ID (slug)</span>
+                    <span>Plain-language label</span>
+                    <span>Type</span>
+                    <span>Unit</span>
+                    <span>Framework coverage</span>
+                    <span>Notes</span>
+                </div>
+
+                <div class="table-row">
+                    <span class="tr-slug">GHG_SCOPE1_TOTAL_tCO2e</span>
+                    <span class="tr-label">Total gross Scope 1 GHG emissions</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">tCO₂e</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);" title="CSRD"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);" title="CDP"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);" title="GRI"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);" title="IFRS S2"></div>
+                    </div>
+                    <span class="tr-notes">Core across all frameworks. Required in ESRS E1-6, CDP C6.1, GRI 305-1, IFRS
+                        S2.29a</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_SCOPE1_CO2_tCO2</span>
+                    <span class="tr-label">Scope 1 — CO₂ emissions</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">tCO₂</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Gas-by-gas breakdown. CSRD and CDP require or strongly encourage</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_SCOPE1_CH4_tCO2e</span>
+                    <span class="tr-label">Scope 1 — CH₄ emissions</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">tCO₂e</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Critical for oil & gas, agriculture sectors</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_SCOPE1_N2O_tCO2e</span>
+                    <span class="tr-label">Scope 1 — N₂O emissions</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">tCO₂e</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Agriculture, chemicals, waste sectors</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_SCOPE1_BIOGENIC_tCO2</span>
+                    <span class="tr-label">Scope 1 — biogenic CO₂ (gross)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">tCO₂</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Reported separately from fossil GHG in all frameworks</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_SCOPE1_METHODOLOGY</span>
+                    <span class="tr-label">Scope 1 calculation methodology</span>
+                    <span class="tr-type">select</span>
+                    <span class="tr-unit">—</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GHG Protocol Corporate Standard / ISO 14064 / sector-specific</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_SCOPE1_BASE_YEAR</span>
+                    <span class="tr-label">Scope 1 base year for targets</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">YYYY</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Required for target trajectory calculation</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_SCOPE1_INTENSITY_tCO2e_MEUR</span>
+                    <span class="tr-label">Scope 1 carbon intensity (per €M revenue)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">tCO₂e/M€</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Calculated field — derived from total S1 / revenue. Also express per unit
+                        output for industrial sectors</span>
+                </div>
+
+                <!-- SCOPE 2 -->
+                <div class="group-header" style="background:var(--e-bg);">
+                    <span class="gh-domain" style="background:var(--e-b);color:var(--e);">GHG Emissions</span>
+                    <span class="gh-title">Greenhouse Gas — Scope 2</span>
+                    <span class="gh-count">6 IDs</span>
+                </div>
+
+                <div class="table-row">
+                    <span class="tr-slug">GHG_SCOPE2_MARKET_tCO2e</span>
+                    <span class="tr-label">Scope 2 — market-based method</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">tCO₂e</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Uses supplier emission factors / RECs / GOs. Both methods mandatory in CSRD
+                        and CDP</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_SCOPE2_LOCATION_tCO2e</span>
+                    <span class="tr-label">Scope 2 — location-based method</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">tCO₂e</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Uses national/regional grid emission factors. Both S2 methods are two
+                        separate canonical IDs</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_SCOPE2_RENEWABLE_PCT</span>
+                    <span class="tr-label">% electricity from renewable sources</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Closely linked to Scope 2 market method. Reported separately in ESRS E1 and
+                        CDP C8</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_SCOPE2_ELEC_CONSUMED_MWh</span>
+                    <span class="tr-label">Total electricity consumed</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">MWh</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Source data for Scope 2 calculation. Required in GRI 302-1</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_SCOPE2_HEAT_STEAM_MWh</span>
+                    <span class="tr-label">Purchased heat, steam, cooling consumed</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">MWh</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Separate from electricity in GRI 302-1 and ESRS E1</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_SCOPE2_INTENSITY_tCO2e_MEUR</span>
+                    <span class="tr-label">Scope 2 carbon intensity (per €M revenue)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">tCO₂e/M€</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Calculated. Use market-based as primary, report both where required</span>
+                </div>
+
+                <!-- SCOPE 3 -->
+                <div class="group-header" style="background:var(--e-bg);">
+                    <span class="gh-domain" style="background:var(--e-b);color:var(--e);">GHG Emissions</span>
+                    <span class="gh-title">Greenhouse Gas — Scope 3 (top categories)</span>
+                    <span class="gh-count">18 IDs</span>
+                </div>
+
+                <div class="sub-group">Upstream categories (most commonly material)</div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_S3_CAT1_PURCHASED_tCO2e</span>
+                    <span class="tr-label">Scope 3 Cat.1 — Purchased goods & services</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">tCO₂e</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Usually the largest S3 category. Supplier data or spend-based method</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_S3_CAT2_CAPGOODS_tCO2e</span>
+                    <span class="tr-label">Scope 3 Cat.2 — Capital goods</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">tCO₂e</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Equipment, machinery, buildings purchased during reporting year</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_S3_CAT3_ENERGY_tCO2e</span>
+                    <span class="tr-label">Scope 3 Cat.3 — Fuel & energy-related activities</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">tCO₂e</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Upstream extraction/production of fuels purchased. Not in S1 or S2</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_S3_CAT4_TRANSPORT_UP_tCO2e</span>
+                    <span class="tr-label">Scope 3 Cat.4 — Upstream transportation</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">tCO₂e</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Logistics from suppliers to the reporting company</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_S3_CAT5_WASTE_tCO2e</span>
+                    <span class="tr-label">Scope 3 Cat.5 — Waste generated in operations</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">tCO₂e</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Emissions from third-party waste disposal and treatment</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_S3_CAT6_BIZ_TRAVEL_tCO2e</span>
+                    <span class="tr-label">Scope 3 Cat.6 — Business travel</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">tCO₂e</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Flights, rail, hotels. Usually calculated from expense data</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_S3_CAT7_COMMUTE_tCO2e</span>
+                    <span class="tr-label">Scope 3 Cat.7 — Employee commuting</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">tCO₂e</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Typically via employee survey. Remote work days often included</span>
+                </div>
+
+                <div class="sub-group">Downstream categories (select — most commonly material)</div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_S3_CAT9_TRANSPORT_DOWN_tCO2e</span>
+                    <span class="tr-label">Scope 3 Cat.9 — Downstream transportation</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">tCO₂e</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Logistics from company to end customer. Retailers and distributors</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_S3_CAT11_USE_tCO2e</span>
+                    <span class="tr-label">Scope 3 Cat.11 — Use of sold products</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">tCO₂e</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Dominant for automotive, appliances, electronics. Often 70–90% of total
+                        S3</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_S3_CAT12_EOL_tCO2e</span>
+                    <span class="tr-label">Scope 3 Cat.12 — End-of-life treatment</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">tCO₂e</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Waste disposal of sold products. Linked to E5 (circular economy)</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_S3_CAT15_INVESTMENTS_tCO2e</span>
+                    <span class="tr-label">Scope 3 Cat.15 — Investments (financed emissions)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">tCO₂e</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Critical for financial institutions. Calculated via PCAF methodology</span>
+                </div>
+
+                <div class="sub-group">Scope 3 total & metadata</div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_S3_TOTAL_tCO2e</span>
+                    <span class="tr-label">Total Scope 3 emissions (all material categories)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">tCO₂e</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Sum of all reported categories. Materiality assessment determines which
+                        categories are included</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_S3_CATEGORIES_EXCLUDED</span>
+                    <span class="tr-label">Scope 3 categories excluded + justification</span>
+                    <span class="tr-type">text</span>
+                    <span class="tr-unit">—</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">All four frameworks require explanation of why categories were
+                        excluded</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GHG_S3_DATA_QUALITY_NOTE</span>
+                    <span class="tr-label">Scope 3 data quality & methodology note</span>
+                    <span class="tr-type">text</span>
+                    <span class="tr-unit">—</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Describes method used per category (measured / estimated /
+                        spend-based)</span>
+                </div>
+
+                <!-- ENERGY -->
+                <div class="group-header" style="background:var(--e-bg);">
+                    <span class="gh-domain" style="background:var(--e-b);color:var(--e);">Energy</span>
+                    <span class="gh-title">Energy Consumption & Mix</span>
+                    <span class="gh-count">8 IDs</span>
+                </div>
+
+                <div class="table-row">
+                    <span class="tr-slug">ENERGY_TOTAL_MWh</span>
+                    <span class="tr-label">Total energy consumption</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">MWh</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 302-1. Sum of all energy sources. Primary input for Scope 1 & 2</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">ENERGY_FOSSIL_MWh</span>
+                    <span class="tr-label">Energy from fossil fuels</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">MWh</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Fuel breakdown: natural gas, diesel, coal, etc.</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">ENERGY_RENEWABLE_MWh</span>
+                    <span class="tr-label">Energy from renewable sources</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">MWh</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Solar, wind, hydro, biomass (self-generated + purchased)</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">ENERGY_INTENSITY_MWh_MEUR</span>
+                    <span class="tr-label">Energy intensity per €M revenue</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">MWh/M€</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 302-3. Calculated field</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">ENERGY_REDUCTION_MWh</span>
+                    <span class="tr-label">Energy savings from efficiency initiatives</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">MWh</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 302-4. Year-on-year energy reductions from specific projects</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">ENERGY_TARGET_PCT_RENEWABLE</span>
+                    <span class="tr-label">Renewable energy target (%)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Target year + target % for renewable transition</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">ENERGY_TARGET_REDUCTION_PCT</span>
+                    <span class="tr-label">Energy reduction target (% vs base year)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Often part of Science-Based Target or net-zero commitment</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">ENERGY_INTERNAL_CARBON_PRICE</span>
+                    <span class="tr-label">Internal carbon price ($/tCO₂e)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">$/tCO₂e</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">CDP C11 and IFRS S2. Shadow price used in investment decisions</span>
+                </div>
+
+                <!-- WATER -->
+                <div class="group-header" style="background:var(--e-bg);">
+                    <span class="gh-domain" style="background:var(--e-b);color:var(--e);">Water</span>
+                    <span class="gh-title">Water Withdrawal & Consumption</span>
+                    <span class="gh-count">6 IDs</span>
+                </div>
+
+                <div class="table-row">
+                    <span class="tr-slug">WATER_WITHDRAWAL_TOTAL_m3</span>
+                    <span class="tr-label">Total water withdrawal</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">m³</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 303-3. All sources: municipal, groundwater, surface, seawater</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">WATER_STRESS_WITHDRAWAL_m3</span>
+                    <span class="tr-label">Water withdrawal in water-stressed areas</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">m³</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Sites assessed via WRI Aqueduct or similar tool. Key risk indicator</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">WATER_CONSUMPTION_TOTAL_m3</span>
+                    <span class="tr-label">Total water consumption (withdrawn – discharged)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">m³</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Net consumption after discharge. More meaningful than raw withdrawal</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">WATER_DISCHARGE_TOTAL_m3</span>
+                    <span class="tr-label">Total water discharge</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">m³</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 303-4. Destination (sea, freshwater, third party)</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">WATER_RECYCLED_PCT</span>
+                    <span class="tr-label">% of water recycled / reused</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">CDP W1. GRI 303-1. Efficiency indicator</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">WATER_TARGET_REDUCTION_PCT</span>
+                    <span class="tr-label">Water withdrawal reduction target (% vs base year)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Includes target year and base year value</span>
+                </div>
+
+                <!-- WASTE -->
+                <div class="group-header" style="background:var(--e-bg);">
+                    <span class="gh-domain" style="background:var(--e-b);color:var(--e);">Waste</span>
+                    <span class="gh-title">Waste Generated & Diverted</span>
+                    <span class="gh-count">6 IDs</span>
+                </div>
+
+                <div class="table-row">
+                    <span class="tr-slug">WASTE_TOTAL_GENERATED_t</span>
+                    <span class="tr-label">Total waste generated</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">tonnes</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 306-3. Hazardous + non-hazardous split required</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">WASTE_HAZARDOUS_t</span>
+                    <span class="tr-label">Hazardous waste generated</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">tonnes</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Regulatory definition varies by country. ESRS E2 overlap</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">WASTE_DIVERTED_RECYCLED_t</span>
+                    <span class="tr-label">Waste diverted — recycling</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">tonnes</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 306-4. Key for circular economy claims (ESRS E5)</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">WASTE_DIRECTED_LANDFILL_t</span>
+                    <span class="tr-label">Waste directed to landfill</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">tonnes</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 306-5. Most impactful disposal method for emissions</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">WASTE_DIVERSION_RATE_PCT</span>
+                    <span class="tr-label">Waste diversion rate from landfill (%)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Calculated: (diverted / total) × 100. Common target metric</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">WASTE_TARGET_REDUCTION_PCT</span>
+                    <span class="tr-label">Waste reduction target (% vs base year)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Often linked to circular economy strategy (ESRS E5)</span>
+                </div>
+
+                <!-- CLIMATE RISK -->
+                <div class="group-header" style="background:var(--e-bg);">
+                    <span class="gh-domain" style="background:var(--e-b);color:var(--e);">Climate Risk</span>
+                    <span class="gh-title">Targets & Climate Risk Metadata</span>
+                    <span class="gh-count">8 IDs</span>
+                </div>
+
+                <div class="table-row">
+                    <span class="tr-slug">CLIMATE_NET_ZERO_TARGET_YEAR</span>
+                    <span class="tr-label">Net-zero commitment target year</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">YYYY</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">2030 interim + 2050 long-term targets required in ESRS E1</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">CLIMATE_SBTI_COMMITTED</span>
+                    <span class="tr-label">Science-Based Target committed (Y/N)</span>
+                    <span class="tr-type">boolean</span>
+                    <span class="tr-unit">—</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">CDP C4.1b. High signal for investors. Links to target ambition level</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">CLIMATE_GHG_REDUCTION_TARGET_PCT</span>
+                    <span class="tr-label">GHG reduction target (% vs base year)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Split by Scope 1+2 and Scope 3. Interim (2030) + long-term (2050)</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">CLIMATE_SCENARIO_COVERAGE</span>
+                    <span class="tr-label">Scenario analysis conducted (Y/N + scenarios used)</span>
+                    <span class="tr-type">text</span>
+                    <span class="tr-unit">—</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">IEA NZE, NGFS, RCP scenarios. 1.5°C-aligned scenario required</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">CLIMATE_PHYSICAL_RISK_ACUTE_DESC</span>
+                    <span class="tr-label">Acute physical climate risks identified</span>
+                    <span class="tr-type">text</span>
+                    <span class="tr-unit">—</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Floods, wildfires, extreme heat events. Site-level where possible</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">CLIMATE_PHYSICAL_RISK_CHRONIC_DESC</span>
+                    <span class="tr-label">Chronic physical climate risks identified</span>
+                    <span class="tr-type">text</span>
+                    <span class="tr-unit">—</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Sea-level rise, temperature trends, precipitation shifts</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">CLIMATE_TRANSITION_RISK_DESC</span>
+                    <span class="tr-label">Transition risks identified (policy, tech, market)</span>
+                    <span class="tr-type">text</span>
+                    <span class="tr-unit">—</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Carbon price exposure, stranded asset risk, regulatory change</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">CLIMATE_CAPEX_ALIGNED_PCT</span>
+                    <span class="tr-label">CapEx aligned to climate transition (%)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">ESRS E1 Taxonomy alignment. % of CapEx in green/transition activities</span>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ══ SOCIAL ══ -->
+        <div>
+            <div class="section-label">
+                <span class="sl-count" style="color:var(--s);border-color:var(--s-b);background:var(--s-bg);">S · 35
+                    IDs</span>
+                Social — Workforce, Health & Safety, Diversity
+            </div>
+
+            <div class="data-table">
+                <div class="group-header" style="background:var(--s-bg);">
+                    <span class="gh-domain" style="background:var(--s-b);color:var(--s);">Workforce</span>
+                    <span class="gh-title">Headcount & Employment</span>
+                    <span class="gh-count">10 IDs</span>
+                </div>
+                <div class="table-head">
+                    <span>Canonical ID (slug)</span><span>Plain-language
+                        label</span><span>Type</span><span>Unit</span><span>Framework coverage</span><span>Notes</span>
+                </div>
+
+                <div class="table-row">
+                    <span class="tr-slug">WFORCE_HEADCOUNT_TOTAL</span>
+                    <span class="tr-label">Total employees (headcount)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">count</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 2-7. End of period headcount. Permanent + temporary split required</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">WFORCE_FTE_TOTAL</span>
+                    <span class="tr-label">Total full-time equivalent (FTE)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">FTE</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">ESRS S1-6. Normalised for part-time. Used for intensity metrics</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">WFORCE_PERMANENT_PCT</span>
+                    <span class="tr-label">% employees on permanent contracts</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Job security indicator. GRI 2-7c</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">WFORCE_PARTTIME_PCT</span>
+                    <span class="tr-label">% employees part-time</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 2-7b. Working conditions indicator</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">WFORCE_NEW_HIRES_COUNT</span>
+                    <span class="tr-label">New employee hires (count)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">count</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 401-1. Split by age group and gender required</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">WFORCE_TURNOVER_RATE_PCT</span>
+                    <span class="tr-label">Employee turnover rate (%)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 401-1. Voluntary vs involuntary split valuable</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">WFORCE_COLLECTIVE_BARGAIN_PCT</span>
+                    <span class="tr-label">% employees covered by collective bargaining</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 2-30. Freedom of association indicator</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">WFORCE_TRAINING_HOURS_AVG</span>
+                    <span class="tr-label">Average training hours per employee per year</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">hours</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 404-1. Investment in human capital development</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">WFORCE_PERF_REVIEW_PCT</span>
+                    <span class="tr-label">% employees receiving regular performance reviews</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 404-3. Career development indicator</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">WFORCE_MEDIAN_WAGE_EUR</span>
+                    <span class="tr-label">Median employee base salary (€)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">€</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">ESRS S1-16. Needed for CEO pay ratio calculation. Split by gender</span>
+                </div>
+
+                <!-- HEALTH & SAFETY -->
+                <div class="group-header" style="background:var(--s-bg);">
+                    <span class="gh-domain" style="background:var(--s-b);color:var(--s);">Health & Safety</span>
+                    <span class="gh-title">Occupational Health & Safety Metrics</span>
+                    <span class="gh-count">8 IDs</span>
+                </div>
+
+                <div class="table-row">
+                    <span class="tr-slug">OHS_FATALITIES_EMPLOYEES</span>
+                    <span class="tr-label">Work-related fatalities — employees</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">count</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 403-9. Zero is the only acceptable target. High investor scrutiny</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">OHS_FATALITIES_CONTRACTORS</span>
+                    <span class="tr-label">Work-related fatalities — contractors</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">count</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 403-9. Must be reported separately from employee fatalities</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">OHS_LTIR_EMPLOYEES</span>
+                    <span class="tr-label">Lost-time injury rate (LTIR) — employees</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">per 1M hrs</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 403-9. Industry benchmark standard. Per million hours worked</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">OHS_LTIR_CONTRACTORS</span>
+                    <span class="tr-label">Lost-time injury rate (LTIR) — contractors</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">per 1M hrs</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Separate tracking required by ESRS S1 and GRI 403</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">OHS_RECORDABLE_RATE</span>
+                    <span class="tr-label">Total recordable incident rate (TRIR)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">per 1M hrs</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Broader than LTIR — includes recordable injuries without lost days</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">OHS_DAYS_LOST</span>
+                    <span class="tr-label">Total days lost to work-related injuries</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">days</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 403-9. Total absenteeism from injury (not illness)</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">OHS_WORK_HOURS_TOTAL</span>
+                    <span class="tr-label">Total hours worked (employees + contractors)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">hours</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Denominator for all rate calculations. Required by GRI 403-9</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">OHS_MGMT_SYSTEM_PCT</span>
+                    <span class="tr-label">% workforce covered by OHS management system</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 403-8. ISO 45001 certification level if applicable</span>
+                </div>
+
+                <!-- DIVERSITY -->
+                <div class="group-header" style="background:var(--s-bg);">
+                    <span class="gh-domain" style="background:var(--s-b);color:var(--s);">Diversity & Equity</span>
+                    <span class="gh-title">Gender, Pay Equity & Leadership</span>
+                    <span class="gh-count">10 IDs</span>
+                </div>
+
+                <div class="table-row">
+                    <span class="tr-slug">DIV_GENDER_WOMEN_TOTAL_PCT</span>
+                    <span class="tr-label">% women in total workforce</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 405-1. Baseline metric for all gender reporting</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">DIV_GENDER_WOMEN_MGMT_PCT</span>
+                    <span class="tr-label">% women in management / leadership roles</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">ESRS S1-15. Senior management + board split valuable</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">DIV_GENDER_WOMEN_BOARD_PCT</span>
+                    <span class="tr-label">% women on board of directors</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">EU 40% target for large listed companies by 2026</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">DIV_GENDER_PAY_GAP_PCT</span>
+                    <span class="tr-label">Gender pay gap (unadjusted, % difference)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">ESRS S1-16. Median base salary gap women vs men. EU Pay Transparency
+                        Directive linked</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">DIV_CEO_PAY_RATIO</span>
+                    <span class="tr-label">CEO-to-median-employee pay ratio</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">ratio</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">ESRS S1-16. e.g. 45:1 means CEO earns 45× median. High investor
+                        scrutiny</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">DIV_AGE_UNDER30_PCT</span>
+                    <span class="tr-label">% employees under 30 years old</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 405-1. Age bracket: under 30, 30–50, over 50</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">DIV_PARENTAL_LEAVE_RETURN_PCT</span>
+                    <span class="tr-label">Parental leave return-to-work rate (%)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 401-3. Split by gender. Key retention indicator</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">DIV_DISCRIMINATION_INCIDENTS</span>
+                    <span class="tr-label">Discrimination incidents reported (count)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">count</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 406-1. Requires action taken / remediation status</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">DIV_DISABILITY_PCT</span>
+                    <span class="tr-label">% employees with disabilities</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">ESRS S1-12. Self-disclosed. Increasingly required under CSRD</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">DIV_SURVEY_ENGAGEMENT_SCORE</span>
+                    <span class="tr-label">Employee engagement / satisfaction score</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">score</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">ESRS S1-17. Survey-based. Scale and methodology must be disclosed</span>
+                </div>
+
+                <!-- SOCIAL OTHER -->
+                <div class="group-header" style="background:var(--s-bg);">
+                    <span class="gh-domain" style="background:var(--s-b);color:var(--s);">Compensation</span>
+                    <span class="gh-title">Wages & Social Protection</span>
+                    <span class="gh-count">7 IDs</span>
+                </div>
+
+                <div class="table-row">
+                    <span class="tr-slug">COMP_LIVING_WAGE_PCT</span>
+                    <span class="tr-label">% employees earning above living wage</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">ESRS S1-10. Living wage varies by country. Anker methodology reference</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">COMP_SOCIAL_PROTECTION_PCT</span>
+                    <span class="tr-label">% employees covered by social protection</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">ESRS S1-11. Health, unemployment, pension coverage</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">COMP_ESG_EXEC_LINKED_PCT</span>
+                    <span class="tr-label">% executive compensation linked to ESG targets</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">CDP C1.3. High investor interest. % of variable pay tied to ESG KPIs</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">COMP_GRIEVANCE_FILED</span>
+                    <span class="tr-label">Grievances filed by employees (count)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">count</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">ESRS S1-20. Formal complaints. Requires resolution rate disclosure</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">COMP_GRIEVANCE_RESOLVED_PCT</span>
+                    <span class="tr-label">% grievances resolved within reporting period</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Paired with COMP_GRIEVANCE_FILED</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">COMP_WHISTLEBLOWER_EXISTS</span>
+                    <span class="tr-label">Whistleblower mechanism in place (Y/N)</span>
+                    <span class="tr-type">boolean</span>
+                    <span class="tr-unit">—</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">EU Whistleblower Protection Directive mandates this. Also in G1</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">COMP_WHISTLEBLOWER_REPORTS</span>
+                    <span class="tr-label">Whistleblower reports received (count)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">count</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">ESRS G1-3. Requires substantiation rate. Confidentiality note required</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ GOVERNANCE + CROSS-CUTTING ══ -->
+        <div>
+            <div class="section-label">
+                <span class="sl-count" style="color:var(--g);border-color:var(--g-b);background:var(--g-bg);">G · 12
+                    IDs</span>
+                Governance — Board, Ethics, Anti-corruption
+                <span class="sl-count"
+                    style="color:var(--x);border-color:var(--x-b);background:var(--x-bg);margin-left:8px;">X · 8
+                    IDs</span>
+                Cross-cutting — Materiality, Boundary, Assurance
+            </div>
+
+            <div class="data-table">
+                <div class="group-header" style="background:var(--g-bg);">
+                    <span class="gh-domain" style="background:var(--g-b);color:var(--g);">Governance</span>
+                    <span class="gh-title">Board, Ethics & Anti-Corruption</span>
+                    <span class="gh-count">12 IDs</span>
+                </div>
+                <div class="table-head">
+                    <span>Canonical ID (slug)</span><span>Plain-language
+                        label</span><span>Type</span><span>Unit</span><span>Framework coverage</span><span>Notes</span>
+                </div>
+
+                <div class="table-row">
+                    <span class="tr-slug">GOV_BOARD_SIZE</span>
+                    <span class="tr-label">Total number of board members</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">count</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 2-9. Foundation for all board diversity metrics</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GOV_BOARD_INDEPENDENT_PCT</span>
+                    <span class="tr-label">% independent board members</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 2-9. Corporate governance best practice indicator</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GOV_BOARD_ESG_OVERSIGHT</span>
+                    <span class="tr-label">Board-level ESG oversight mechanism (description)</span>
+                    <span class="tr-type">text</span>
+                    <span class="tr-unit">—</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Committee structure, frequency of ESG review. TCFD Pillar 1</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GOV_BOARD_ESG_TRAINING_PCT</span>
+                    <span class="tr-label">% board members with ESG/sustainability training</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Competency requirement in ESRS 2 and CDP C1.1b</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GOV_ANTICORRUPT_TRAINING_PCT</span>
+                    <span class="tr-label">% employees trained on anti-corruption policies</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 205-2. Split by employee category and governance body</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GOV_CORRUPTION_INCIDENTS</span>
+                    <span class="tr-label">Confirmed corruption incidents (count)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">count</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 205-3. Requires action taken. Employees dismissed, contracts
+                        terminated</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GOV_LEGAL_FINES_EUR</span>
+                    <span class="tr-label">Total significant fines for non-compliance (€)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">€</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 2-27. Legal compliance signal. Environmental + social + governance
+                        fines</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GOV_SUPPLIER_CODE_COVERAGE_PCT</span>
+                    <span class="tr-label">% key suppliers covered by code of conduct</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">%</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">ESRS G1-2. Supply chain ESG governance indicator</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GOV_SUPPLIER_AUDITS_COUNT</span>
+                    <span class="tr-label">Number of supplier ESG audits conducted</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">count</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Due diligence depth indicator. % with issues found also valuable</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GOV_POLITICAL_CONTRIB_EUR</span>
+                    <span class="tr-label">Total political contributions (€)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">€</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 415-1 and ESRS G1-5. Zero in many jurisdictions</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GOV_DATA_BREACHES_COUNT</span>
+                    <span class="tr-label">Data breaches / cybersecurity incidents (count)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">count</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 418-1 / ESRS G1. Customer data incidents reported to authorities</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">GOV_CUSTOMERS_AFFECTED_BREACH</span>
+                    <span class="tr-label">Customers affected by data breaches (count)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">count</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 418-1. Severity indicator paired with breach count</span>
+                </div>
+
+                <!-- CROSS-CUTTING -->
+                <div class="group-header" style="background:var(--x-bg);">
+                    <span class="gh-domain" style="background:var(--x-b);color:var(--x);">Cross-cutting</span>
+                    <span class="gh-title">Materiality, Reporting Boundary & Process</span>
+                    <span class="gh-count">8 IDs</span>
+                </div>
+
+                <div class="table-row">
+                    <span class="tr-slug">META_REPORTING_BOUNDARY</span>
+                    <span class="tr-label">Reporting boundary definition (operational / financial control)</span>
+                    <span class="tr-type">select</span>
+                    <span class="tr-unit">—</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 2-2. All frameworks require explicit boundary statement. Equity share
+                        also possible</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">META_REPORTING_YEAR</span>
+                    <span class="tr-label">Reporting period (year)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">YYYY</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Shared across all datapoints. Calendar year vs fiscal year distinction
+                        matters</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">META_REVENUE_EUR</span>
+                    <span class="tr-label">Total revenue (€)</span>
+                    <span class="tr-type">number</span>
+                    <span class="tr-unit">€</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Denominator for all intensity metrics. Also determines regulatory threshold
+                        applicability</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">META_ASSURANCE_LEVEL</span>
+                    <span class="tr-label">External assurance level obtained</span>
+                    <span class="tr-type">select</span>
+                    <span class="tr-unit">—</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">CSRD: limited assurance initially, reasonable by 2028. Options: none /
+                        limited / reasonable</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">META_MATERIALITY_TOPICS</span>
+                    <span class="tr-label">Material topics identified (list)</span>
+                    <span class="tr-type">text</span>
+                    <span class="tr-unit">—</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">Output of materiality assessment process. Drives which ESRS standards are
+                        applicable</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">META_STAKEHOLDER_ENGAGEMENT</span>
+                    <span class="tr-label">Stakeholder groups engaged in materiality process</span>
+                    <span class="tr-type">text</span>
+                    <span class="tr-unit">—</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-part" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 2-29. GRI requires stakeholder-driven materiality. CSRD requires impact +
+                        financial dual assessment</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">META_RESTATEMENTS</span>
+                    <span class="tr-label">Prior year restatements (description + reason)</span>
+                    <span class="tr-type">text</span>
+                    <span class="tr-unit">—</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 2-4. Required by all frameworks for comparability. M&A, methodology
+                        change, boundary change</span>
+                </div>
+                <div class="table-row">
+                    <span class="tr-slug">META_FRAMEWORKS_APPLIED</span>
+                    <span class="tr-label">Reporting frameworks applied (list)</span>
+                    <span class="tr-type">text</span>
+                    <span class="tr-unit">—</span>
+                    <div class="tr-fw">
+                        <div class="fw-pip fw-pip-full" style="background:var(--csrd);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--cdp);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--gri);"></div>
+                        <div class="fw-pip fw-pip-full" style="background:var(--ifrs);"></div>
+                    </div>
+                    <span class="tr-notes">GRI 2-14. Identifies which standards and versions were used for the reporting
+                        period</span>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- FRAMEWORK COVERAGE SUMMARY -->
+        <div>
+            <div class="section-label">Coverage — how many of these 120 IDs each framework requires</div>
+            <div class="coverage-row">
+                <div class="cov-card">
+                    <div class="cov-fw" style="color:var(--csrd);">CSRD / ESRS</div>
+                    <div class="cov-desc">Requires all 120 IDs — this is the most comprehensive framework and the
+                        primary design target for the shared core.</div>
+                    <div class="cov-bar-wrap">
+                        <div class="cov-bar-label"><span>Mandatory</span><span>100%</span></div>
+                        <div class="cov-bar-bg">
+                            <div class="cov-bar-fill" style="width:100%;background:var(--csrd);"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="cov-card">
+                    <div class="cov-fw" style="color:var(--cdp);">CDP</div>
+                    <div class="cov-desc">Requires ~75% of core IDs. Strong on GHG and climate risk, minimal on social
+                        and governance specifics.</div>
+                    <div class="cov-bar-wrap">
+                        <div class="cov-bar-label"><span>Fully covered</span><span>~75%</span></div>
+                        <div class="cov-bar-bg">
+                            <div class="cov-bar-fill" style="width:75%;background:var(--cdp);"></div>
+                        </div>
+                    </div>
+                    <div class="cov-bar-wrap">
+                        <div class="cov-bar-label"><span>Conditional</span><span>~15%</span></div>
+                        <div class="cov-bar-bg">
+                            <div class="cov-bar-fill" style="width:15%;background:#9FE1CB;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="cov-card">
+                    <div class="cov-fw" style="color:var(--gri);">GRI</div>
+                    <div class="cov-desc">Covers ~80% of core IDs — strong overlap especially on social (GRI 400 series)
+                        and environment (GRI 300).</div>
+                    <div class="cov-bar-wrap">
+                        <div class="cov-bar-label"><span>Fully covered</span><span>~80%</span></div>
+                        <div class="cov-bar-bg">
+                            <div class="cov-bar-fill" style="width:80%;background:var(--gri);"></div>
+                        </div>
+                    </div>
+                    <div class="cov-bar-wrap">
+                        <div class="cov-bar-label"><span>Conditional / if material</span><span>~12%</span></div>
+                        <div class="cov-bar-bg">
+                            <div class="cov-bar-fill" style="width:12%;background:#FDE68A;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="cov-card">
+                    <div class="cov-fw" style="color:var(--ifrs);">IFRS S2</div>
+                    <div class="cov-desc">Climate-focused — covers ~85% of the E domain IDs. Social coverage is minimal
+                        (only if financially material).</div>
+                    <div class="cov-bar-wrap">
+                        <div class="cov-bar-label"><span>E domain fully covered</span><span>~85%</span></div>
+                        <div class="cov-bar-bg">
+                            <div class="cov-bar-fill" style="width:85%;background:var(--ifrs);"></div>
+                        </div>
+                    </div>
+                    <div class="cov-bar-wrap">
+                        <div class="cov-bar-label"><span>S+G domain — only if material</span><span>~25%</span></div>
+                        <div class="cov-bar-bg">
+                            <div class="cov-bar-fill" style="width:25%;background:#BFDBFE;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        <span>Shared Core Canonical IDs — Deep Dive · v1.0 · ~120 IDs · Estimation ±10%</span>
+        <span>Narrative-only requirements excluded · Sector-specific additions not included · TCFD fully absorbed by
+            CSRD E1 + IFRS S2</span>
+    </div>
+
+</body>
+
+</html>
